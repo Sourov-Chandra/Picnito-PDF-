@@ -16,7 +16,7 @@ export default function App() {
 
   // Settings State
   const [settings, setSettings] = useState({
-    saveMode: 'folder', // 'folder' | 'prompt'
+    askEachTime: false, // Checkbox mark selection
     outputFolder: '',
     outputFilename: 'Picnito_Document.pdf',
     paperSize: 'A4',

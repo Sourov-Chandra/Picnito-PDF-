@@ -46,8 +46,8 @@ export function usePdfGenerator() {
         filename += '.pdf';
       }
 
-      // Check Save Mode: Custom Folder vs Prompt Dialog
-      if (settings.saveMode === 'folder' && settings.outputFolder) {
+      // Check Save Mode: If askEachTime is NOT set and outputFolder is chosen
+      if (!settings.askEachTime && settings.outputFolder) {
         const folder = settings.outputFolder.replace(/[/\\]+$/, '');
         const sep = folder.includes('/') ? '/' : '\\';
         savePath = `${folder}${sep}${filename}`;

@@ -21,7 +21,7 @@ export function ConfirmModal({
             className={`w-9 h-9 rounded-xl flex items-center justify-center ${
               isDestructive
                 ? 'bg-rose-500/10 border border-rose-500/20 text-rose-400'
-                : 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
+                : 'bg-[#6266f0]/10 border border-[#6266f0]/30 text-[#0cb1d6]'
             }`}
           >
             <AlertTriangle className="w-5 h-5" />
@@ -43,7 +43,7 @@ export function ConfirmModal({
             className={`px-4 py-2 text-xs font-semibold rounded-lg shadow-sm transition ${
               isDestructive
                 ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/20'
-                : 'bg-emerald-500 hover:bg-emerald-400 text-zinc-950 shadow-emerald-500/20'
+                : 'bg-gradient-to-r from-[#0cb1d6] via-[#6266f0] to-[#a356f6] hover:brightness-110 text-white shadow-md shadow-[#6266f0]/30'
             }`}
           >
             {confirmLabel}

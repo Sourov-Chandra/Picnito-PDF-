@@ -31,7 +31,7 @@ export function ProgressModal({
           <div className="p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                <div className="w-9 h-9 rounded-xl bg-[#6266f0]/10 border border-[#6266f0]/30 flex items-center justify-center text-[#0cb1d6]">
                   <Loader2 className="w-5 h-5 animate-spin" />
                 </div>
                 <div>
@@ -51,14 +51,14 @@ export function ProgressModal({
                 <span className="text-zinc-300 font-medium truncate max-w-[260px]">
                   {progress.currentFilename || 'Processing...'}
                 </span>
-                <span className="text-emerald-400 font-mono font-bold">
+                <span className="text-[#0cb1d6] font-mono font-bold">
                   {progress.percentage}%
                 </span>
               </div>
 
               <div className="w-full h-2.5 bg-zinc-950 rounded-full overflow-hidden border border-zinc-800">
                 <div
-                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-200 rounded-full"
+                  className="h-full bg-gradient-to-r from-[#0cb1d6] via-[#6266f0] to-[#a356f6] transition-all duration-200 rounded-full"
                   style={{ width: `${progress.percentage}%` }}
                 />
               </div>
@@ -90,8 +90,8 @@ export function ProgressModal({
         {!isGenerating && result && (
           <div className="p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-                <CheckCircle2 className="w-6 h-6" />
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-[#0cb1d6] via-[#6266f0] to-[#a356f6] flex items-center justify-center text-white shadow-lg shadow-[#6266f0]/30">
+                <CheckCircle2 className="w-6 h-6 stroke-[2.5]" />
               </div>
               <div>
                 <h3 className="text-base font-semibold text-zinc-100">
@@ -113,7 +113,7 @@ export function ProgressModal({
             <div className="flex items-center gap-2 pt-2">
               <button
                 onClick={() => onOpenFile(result.outputPath)}
-                className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-semibold text-xs rounded-xl shadow-lg shadow-emerald-500/20 transition"
+                className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-gradient-to-r from-[#0cb1d6] via-[#6266f0] to-[#a356f6] hover:brightness-110 text-white font-semibold text-xs rounded-xl shadow-lg shadow-[#6266f0]/30 transition"
               >
                 <ExternalLink className="w-4 h-4" />
                 Open PDF
@@ -123,7 +123,7 @@ export function ProgressModal({
                 onClick={() => onRevealFolder(result.outputPath)}
                 className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-medium text-xs rounded-xl border border-zinc-700 transition"
               >
-                <FolderOpen className="w-4 h-4 text-emerald-400" />
+                <FolderOpen className="w-4 h-4 text-[#0cb1d6]" />
                 Show in Folder
               </button>
 

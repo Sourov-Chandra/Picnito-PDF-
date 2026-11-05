@@ -92,11 +92,11 @@ export function SortModal({
               onRestoreOriginal();
               onClose();
             }}
-            className="w-full p-3 rounded-xl border border-dashed border-emerald-500/40 bg-emerald-500/5 hover:bg-emerald-500/10 text-left flex items-start gap-3 transition"
+            className="w-full p-3 rounded-xl border border-dashed border-[#6266f0]/50 bg-[#6266f0]/10 hover:bg-[#6266f0]/15 text-left flex items-start gap-3 transition"
           >
-            <RotateCcw className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+            <RotateCcw className="w-4 h-4 text-[#0cb1d6] mt-0.5 shrink-0" />
             <div>
-              <div className="text-xs font-semibold text-emerald-400">
+              <div className="text-xs font-semibold text-[#a356f6]">
                 Restore Original Import Order
               </div>
               <div className="text-[11px] text-zinc-400 mt-0.5">
@@ -120,16 +120,16 @@ export function SortModal({
                   onApplySort(opt.id);
                   onClose();
                 }}
-                className="w-full p-3 rounded-xl border border-zinc-800 bg-zinc-950/60 hover:border-zinc-700 hover:bg-zinc-800/60 text-left flex items-start gap-3 transition"
+                className="w-full p-3 rounded-xl border border-zinc-800 bg-zinc-950/60 hover:border-[#6266f0]/60 hover:bg-zinc-900 text-left flex items-start gap-3 transition"
               >
-                <Icon className="w-4 h-4 text-zinc-400 mt-0.5 shrink-0" />
+                <Icon className="w-4 h-4 text-[#328fe1] mt-0.5 shrink-0" />
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-medium text-zinc-200">
                       {opt.title}
                     </span>
                     {opt.badge && (
-                      <span className="text-[9px] font-bold px-1.5 py-0.2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded">
+                      <span className="text-[9px] font-bold px-1.5 py-0.2 bg-[#0cb1d6]/10 text-[#0cb1d6] border border-[#0cb1d6]/30 rounded">
                         {opt.badge}
                       </span>
                     )}

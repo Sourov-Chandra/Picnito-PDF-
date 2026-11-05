@@ -53,7 +53,7 @@ export function ImageCard({
       }}
       className={`group relative flex flex-col rounded-xl overflow-hidden border transition-all duration-150 select-none cursor-grab active:cursor-grabbing bg-zinc-900/80 ${
         isSelected
-          ? 'border-emerald-500 ring-2 ring-emerald-500/30 shadow-lg shadow-emerald-500/10'
+          ? 'border-[#6266f0] ring-2 ring-[#6266f0]/40 shadow-lg shadow-[#6266f0]/15'
           : 'border-zinc-800 hover:border-zinc-700 hover:shadow-md'
       } ${isDragging ? 'opacity-30 scale-95' : 'opacity-100'}`}
     >
@@ -63,8 +63,8 @@ export function ImageCard({
           title={`Page ${index + 1} in generated PDF (Double-click card to preview full size)`}
           className={`flex items-center justify-center font-bold text-xs px-2 py-0.5 rounded-md shadow-md backdrop-blur transition ${
             isSelected
-              ? 'bg-emerald-500 text-zinc-950 font-extrabold'
-              : 'bg-zinc-950/80 text-emerald-400 border border-zinc-700/80 group-hover:bg-zinc-950'
+              ? 'bg-gradient-to-r from-[#0cb1d6] to-[#a356f6] text-white font-extrabold shadow-md shadow-[#6266f0]/30'
+              : 'bg-zinc-950/80 text-[#0cb1d6] border border-[#328fe1]/30 group-hover:bg-zinc-950'
           }`}
         >
           #{index + 1}
@@ -80,7 +80,7 @@ export function ImageCard({
             onOpenPreview(index);
           }}
           title="Open large preview (Double-click)"
-          className="w-6 h-6 rounded-md bg-zinc-950/70 border border-zinc-700/80 text-zinc-400 hover:text-emerald-400 hover:bg-zinc-950 opacity-0 group-hover:opacity-100 transition flex items-center justify-center backdrop-blur"
+          className="w-6 h-6 rounded-md bg-zinc-950/70 border border-zinc-700/80 text-zinc-400 hover:text-[#0cb1d6] hover:bg-zinc-950 opacity-0 group-hover:opacity-100 transition flex items-center justify-center backdrop-blur"
         >
           <Maximize2 className="w-3.5 h-3.5" />
         </button>
@@ -93,7 +93,7 @@ export function ImageCard({
           }}
           className={`w-6 h-6 rounded-md flex items-center justify-center transition backdrop-blur ${
             isSelected
-              ? 'bg-emerald-500 text-zinc-950'
+              ? 'bg-gradient-to-r from-[#0cb1d6] to-[#6266f0] text-white'
               : 'bg-zinc-950/70 border border-zinc-700/80 text-zinc-400 opacity-0 group-hover:opacity-100 hover:text-white'
           }`}
         >

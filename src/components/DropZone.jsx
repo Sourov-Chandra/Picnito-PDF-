@@ -128,7 +128,7 @@ export function DropZone({ onFilesSelected, onFolderSelected, hasImages }) {
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className={`flex items-center justify-between px-6 py-2.5 bg-zinc-900/60 border-b transition ${
-          isDragOver ? 'border-emerald-500 bg-emerald-500/10' : 'border-zinc-800/80'
+          isDragOver ? 'border-[#6266f0] bg-[#6266f0]/10' : 'border-zinc-800/80'
         }`}
       >
         <input
@@ -140,22 +140,22 @@ export function DropZone({ onFilesSelected, onFolderSelected, hasImages }) {
           onChange={handleFileInputChange}
         />
         <div className="flex items-center gap-2 text-xs text-zinc-400">
-          <UploadCloud className="w-4 h-4 text-emerald-400" />
+          <UploadCloud className="w-4 h-4 text-[#0cb1d6]" />
           <span>Drag and drop more images here, or add via:</span>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={handleChooseFiles}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium rounded-lg border border-zinc-700/60 transition shadow-sm"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 text-xs font-medium rounded-lg border border-zinc-700/60 transition shadow-sm"
           >
-            <Plus className="w-3.5 h-3.5 text-emerald-400" />
+            <Plus className="w-3.5 h-3.5 text-[#0cb1d6]" />
             Add Images
           </button>
           <button
             onClick={handleChooseFolder}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium rounded-lg border border-zinc-700/60 transition shadow-sm"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 text-xs font-medium rounded-lg border border-zinc-700/60 transition shadow-sm"
           >
-            <FolderPlus className="w-3.5 h-3.5 text-emerald-400" />
+            <FolderPlus className="w-3.5 h-3.5 text-[#a356f6]" />
             Add Entire Folder
           </button>
         </div>
@@ -171,7 +171,7 @@ export function DropZone({ onFilesSelected, onFolderSelected, hasImages }) {
       onDrop={handleDrop}
       className={`h-full flex flex-col items-center justify-center p-8 transition-all duration-200 ${
         isDragOver
-          ? 'border-2 border-dashed border-emerald-500 bg-emerald-500/5'
+          ? 'border-2 border-dashed border-[#6266f0] bg-[#6266f0]/5'
           : 'border-2 border-dashed border-zinc-800/80 bg-zinc-950/40 hover:border-zinc-700'
       } rounded-2xl m-6`}
     >
@@ -183,8 +183,10 @@ export function DropZone({ onFilesSelected, onFolderSelected, hasImages }) {
         className="hidden"
         onChange={handleFileInputChange}
       />
-      <div className="w-20 h-20 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-6 shadow-xl text-emerald-400">
-        <UploadCloud className="w-10 h-10 stroke-[1.5]" />
+      <div className="w-20 h-20 rounded-2xl bg-gradient-to-r from-[#0cb1d6] via-[#6266f0] to-[#a356f6] p-0.5 mb-6 shadow-xl shadow-[#6266f0]/20">
+        <div className="w-full h-full bg-zinc-950 rounded-[14px] flex items-center justify-center text-white">
+          <UploadCloud className="w-10 h-10 text-[#0cb1d6] stroke-[1.5]" />
+        </div>
       </div>
 
       <h2 className="text-xl font-semibold text-zinc-100 mb-2">
@@ -197,7 +199,7 @@ export function DropZone({ onFilesSelected, onFolderSelected, hasImages }) {
       <div className="flex items-center gap-3 mb-8">
         <button
           onClick={handleChooseFiles}
-          className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-zinc-950 font-semibold text-sm rounded-xl shadow-lg shadow-emerald-500/20 transition transform active:scale-95"
+          className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#0cb1d6] via-[#6266f0] to-[#a356f6] hover:brightness-110 active:scale-95 text-white font-semibold text-sm rounded-xl shadow-lg shadow-[#6266f0]/30 transition transform"
         >
           <ImageIcon className="w-4 h-4 stroke-[2.5]" />
           Select Images
@@ -205,9 +207,9 @@ export function DropZone({ onFilesSelected, onFolderSelected, hasImages }) {
 
         <button
           onClick={handleChooseFolder}
-          className="flex items-center gap-2 px-5 py-2.5 bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-800 text-zinc-200 font-medium text-sm rounded-xl border border-zinc-700 transition"
+          className="flex items-center gap-2 px-6 py-3 bg-zinc-900 hover:bg-zinc-800 active:bg-zinc-900 text-zinc-200 font-medium text-sm rounded-xl border border-zinc-700/80 transition"
         >
-          <FolderPlus className="w-4 h-4 text-emerald-400" />
+          <FolderPlus className="w-4 h-4 text-[#a356f6]" />
           Select Folder
         </button>
       </div>

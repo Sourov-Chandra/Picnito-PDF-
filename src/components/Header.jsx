@@ -5,10 +5,7 @@ import {
   RotateCw,
   Trash2,
   ArrowUpDown,
-  CheckSquare,
-  Square,
   FileCheck,
-  FolderOpen,
   Image as ImageIcon
 } from 'lucide-react';
 
@@ -29,18 +26,21 @@ export function Header({
   isGenerating,
 }) {
   return (
-    <header className="h-16 border-b border-zinc-800 bg-zinc-900/90 backdrop-blur px-6 flex items-center justify-between z-20 shrink-0">
+    <header className="h-16 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur px-6 flex items-center justify-between z-20 shrink-0">
       {/* Brand / Logo */}
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-lg shadow-emerald-500/20 text-white font-bold">
-          <FileText className="w-5 h-5 text-zinc-950" />
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-[#0cb1d6] via-[#6266f0] to-[#a356f6] flex items-center justify-center shadow-lg shadow-[#6266f0]/30 text-white font-bold transition transform hover:scale-105">
+          <FileText className="w-5 h-5 text-white" />
         </div>
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-base font-semibold tracking-tight text-zinc-100">
-              Picnito <span className="text-emerald-400">PDF</span>
+            <h1 className="text-base font-bold tracking-tight text-zinc-100">
+              Picnito{' '}
+              <span className="bg-gradient-to-r from-[#0cb1d6] via-[#6266f0] to-[#a356f6] bg-clip-text text-transparent">
+                PDF
+              </span>
             </h1>
-            <span className="text-[10px] font-medium tracking-wide uppercase px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <span className="text-[10px] font-semibold tracking-wide uppercase px-2 py-0.5 rounded-full bg-[#0cb1d6]/10 text-[#0cb1d6] border border-[#0cb1d6]/30">
               Offline
             </span>
           </div>
@@ -53,9 +53,9 @@ export function Header({
       {/* Stats and Collection Actions */}
       <div className="flex items-center gap-4">
         {imageCount > 0 && (
-          <div className="flex items-center gap-3 bg-zinc-950/60 border border-zinc-800 px-3.5 py-1.5 rounded-lg text-xs">
+          <div className="flex items-center gap-3 bg-zinc-900/80 border border-zinc-800 px-3.5 py-1.5 rounded-xl text-xs shadow-sm">
             <div className="flex items-center gap-1.5 text-zinc-300">
-              <ImageIcon className="w-3.5 h-3.5 text-emerald-400" />
+              <ImageIcon className="w-3.5 h-3.5 text-[#0cb1d6]" />
               <span>
                 <strong className="text-zinc-100">{imageCount}</strong> {imageCount === 1 ? 'image' : 'images'}
               </span>
@@ -68,7 +68,7 @@ export function Header({
             {selectedCount > 0 && (
               <>
                 <span className="w-1 h-1 rounded-full bg-zinc-700"></span>
-                <div className="text-emerald-400 font-medium">
+                <div className="text-[#a356f6] font-semibold">
                   {selectedCount} selected
                 </div>
               </>
@@ -77,7 +77,7 @@ export function Header({
         )}
 
         {/* Undo / Redo */}
-        <div className="flex items-center bg-zinc-950/60 border border-zinc-800 rounded-lg p-0.5">
+        <div className="flex items-center bg-zinc-900/80 border border-zinc-800 rounded-lg p-0.5">
           <button
             onClick={onUndo}
             disabled={!canUndo}
@@ -98,7 +98,7 @@ export function Header({
 
         {/* Selected Items Batch Actions */}
         {selectedCount > 0 && (
-          <div className="flex items-center gap-1.5 bg-zinc-950/60 border border-zinc-800 rounded-lg p-1">
+          <div className="flex items-center gap-1.5 bg-zinc-900/80 border border-zinc-800 rounded-lg p-1">
             <button
               onClick={onClearSelection}
               title="Clear selection (Esc)"
@@ -122,9 +122,9 @@ export function Header({
           <div className="flex items-center gap-2">
             <button
               onClick={onOpenSortMenu}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-800/80 hover:bg-zinc-700/80 text-zinc-200 text-xs font-medium rounded-lg border border-zinc-700/50 transition"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 text-xs font-medium rounded-lg border border-zinc-700/60 transition"
             >
-              <ArrowUpDown className="w-3.5 h-3.5 text-zinc-400" />
+              <ArrowUpDown className="w-3.5 h-3.5 text-[#328fe1]" />
               Sort Sequence
             </button>
 
@@ -138,11 +138,11 @@ export function Header({
           </div>
         )}
 
-        {/* Big Generate PDF Button */}
+        {/* Main CTA Button: Styled with the Gradient from the attached image */}
         <button
           onClick={onGeneratePdf}
           disabled={imageCount === 0 || isGenerating}
-          className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed text-zinc-950 font-semibold text-xs tracking-wide rounded-lg shadow-lg shadow-emerald-500/20 transition transform active:scale-95"
+          className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#0cb1d6] via-[#6266f0] to-[#a356f6] hover:brightness-110 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-xs tracking-wide rounded-xl shadow-lg shadow-[#6266f0]/30 transition transform"
         >
           <FileCheck className="w-4 h-4 stroke-[2.5]" />
           <span>{isGenerating ? 'Generating...' : 'Generate PDF'}</span>

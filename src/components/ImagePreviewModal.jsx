@@ -86,11 +86,11 @@ export function ImagePreviewModal({
       <div className="h-16 px-6 bg-zinc-950/80 border-b border-zinc-800 flex items-center justify-between z-20 shrink-0">
         {/* Left: Sequence Badge & Filename */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
-            <span className="text-xs font-bold text-emerald-400">
+          <div className="flex items-center gap-2 px-2.5 py-1 bg-gradient-to-r from-[#0cb1d6] to-[#a356f6] rounded-lg shadow-md shadow-[#6266f0]/20 text-white">
+            <span className="text-xs font-bold">
               Page #{currentIndex + 1}
             </span>
-            <span className="text-[11px] text-zinc-500">of {totalImages}</span>
+            <span className="text-[11px] text-white/80">of {totalImages}</span>
           </div>
 
           <div className="flex flex-col">
@@ -102,7 +102,7 @@ export function ImagePreviewModal({
               <span>•</span>
               <span>{formatFileSize(image.size)}</span>
               <span>•</span>
-              <span className="uppercase">{image.format}</span>
+              <span className="uppercase text-[#0cb1d6]">{image.format}</span>
             </div>
           </div>
         </div>
