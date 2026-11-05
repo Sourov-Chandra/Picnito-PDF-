@@ -52,8 +52,8 @@ async function getImageMetadata(filePath) {
     const stat = fs.statSync(filePath);
     const meta = await sharp(filePath).rotate().metadata();
 
-    // Standard RFC-compliant media URL for full-res view
-    const fullMediaUrl = pathToFileURL(filePath).href.replace(/^file:/, 'picnito-media:');
+    // Standard URL format for full-res view without path-mangling
+    const fullMediaUrl = `picnito-media://media/?path=${encodeURIComponent(filePath)}`;
 
     // Generate fast lightweight preview thumbnail (base64) for instant rendering
     let thumbnailUrl = null;
@@ -125,10 +125,16 @@ function createWindow() {
 
   if (isDev) {
     const devServerUrl = process.env.VITE_DEV_SERVER_URL || 'http://localhost:5173';
-    mainWindow.loadURL(devServerUrl).catch(() => {
-      // In case dev server is still starting up, retry briefly
-      setTimeout(() => mainWindow.loadURL(devServerUrl), 1000);
-    });
+    const tryLoad = (retries = 15) => {
+      mainWindow.loadURL(devServerUrl).catch((err) => {
+        if (retries > 0) {
+          setTimeout(() => tryLoad(retries - 1), 400);
+        } else {
+          console.error('Failed to load dev server:', err);
+        }
+      });
+    };
+    tryLoad();
   } else {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
@@ -141,7 +147,23 @@ app.whenReady().then(() => {
   // Setup robust local image protocol handler
   protocol.handle('picnito-media', (request) => {
     try {
-      const fileUrl = request.url.replace(/^picnito-media:/, 'file:');
+      const u = new URL(request.url);
+      let realPath = u.searchParams.get('path');
+      if (!realPath) {
+        if (u.host && u.host.length === 1) {
+          realPath = `${u.host.toUpperCase()}:${decodeURIComponent(u.pathname)}`;
+        } else {
+          realPath = decodeURIComponent(u.pathname);
+          if (process.platform === 'win32' && realPath.startsWith('/')) {
+            realPath = realPath.slice(1);
+          }
+        }
+      }
+      realPath = path.normalize(realPath);
+      if (!fs.existsSync(realPath)) {
+        return new Response('File Not Found', { status: 404 });
+      }
+      const fileUrl = pathToFileURL(realPath).toString();
       return net.fetch(fileUrl);
     } catch (err) {
       console.error('Protocol handle error:', err);

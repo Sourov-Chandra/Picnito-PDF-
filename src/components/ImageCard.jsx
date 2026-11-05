@@ -37,7 +37,7 @@ export function ImageCard({
   const imgSrc =
     image.thumbnailUrl ||
     image.previewUrl ||
-    (image.path ? `picnito-media:///${image.path.replace(/\\/g, '/')}` : null);
+    (image.path ? `picnito-media://media/?path=${encodeURIComponent(image.path)}` : null);
 
   return (
     <div

@@ -69,7 +69,7 @@ export function ImagePreviewModal({
   const fullSrc =
     image.fullMediaUrl ||
     image.previewUrl ||
-    (image.path ? `picnito-media:///${image.path.replace(/\\/g, '/')}` : image.thumbnailUrl);
+    (image.path ? `picnito-media://media/?path=${encodeURIComponent(image.path)}` : image.thumbnailUrl);
 
   const handleZoomIn = () => setZoom((z) => Math.min(3, +(z + 0.25).toFixed(2)));
   const handleZoomOut = () => setZoom((z) => Math.max(0.5, +(z - 0.25).toFixed(2)));
