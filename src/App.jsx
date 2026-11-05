@@ -6,6 +6,7 @@ import { SettingsPanel } from './components/SettingsPanel';
 import { ProgressModal } from './components/ProgressModal';
 import { SortModal } from './components/SortModal';
 import { ConfirmModal } from './components/ConfirmModal';
+import { ImagePreviewModal } from './components/ImagePreviewModal';
 import { useImageCollection } from './hooks/useImageCollection';
 import { usePdfGenerator } from './hooks/usePdfGenerator';
 
@@ -36,6 +37,11 @@ export default function App() {
 
   // Modal states
   const [isSortOpen, setIsSortOpen] = useState(false);
+  const [previewState, setPreviewState] = useState({
+    isOpen: false,
+    index: 0,
+  });
+
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
     title: '',
@@ -52,6 +58,9 @@ export default function App() {
     const handleKeyDown = (e) => {
       // Don't intercept if typing in an input
       if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
+
+      // If big preview is open, let ImagePreviewModal handle its own keys
+      if (previewState.isOpen) return;
 
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
         e.preventDefault();
@@ -71,14 +80,55 @@ export default function App() {
         }
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
         collection.redo();
+      } else if (e.key === ' ' || e.key === 'Enter') {
+        // Space or Enter opens preview for first selected image
+        if (collection.selectedIds.size > 0) {
+          const firstSelectedId = Array.from(collection.selectedIds)[0];
+          const foundIdx = collection.images.findIndex((img) => img.id === firstSelectedId);
+          if (foundIdx !== -1) {
+            e.preventDefault();
+            setPreviewState({ isOpen: true, index: foundIdx });
+          }
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [collection]);
+  }, [collection, previewState.isOpen]);
 
-  // Handlers
+  // Preview Handlers
+  const handleOpenPreview = (index) => {
+    setPreviewState({ isOpen: true, index });
+  };
+
+  const handleClosePreview = () => {
+    setPreviewState((prev) => ({ ...prev, isOpen: false }));
+  };
+
+  const handleNextPreview = () => {
+    setPreviewState((prev) => ({
+      ...prev,
+      index: Math.min(collection.images.length - 1, prev.index + 1),
+    }));
+  };
+
+  const handlePrevPreview = () => {
+    setPreviewState((prev) => ({
+      ...prev,
+      index: Math.max(0, prev.index - 1),
+    }));
+  };
+
+  const handleRemoveFromPreview = (id) => {
+    collection.removeImage(id);
+    if (collection.images.length <= 1) {
+      handleClosePreview();
+    } else if (previewState.index >= collection.images.length - 1) {
+      setPreviewState((prev) => ({ ...prev, index: Math.max(0, prev.index - 1) }));
+    }
+  };
+
   const handleClearAllConfirm = () => {
     setConfirmModal({
       isOpen: true,
@@ -90,6 +140,7 @@ export default function App() {
       onConfirm: () => {
         collection.clearAll();
         setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+        handleClosePreview();
       },
       onCancel: () => {
         setConfirmModal((prev) => ({ ...prev, isOpen: false }));
@@ -119,6 +170,8 @@ export default function App() {
       });
     });
   };
+
+  const currentPreviewImage = collection.images[previewState.index] || null;
 
   return (
     <div className="h-screen w-screen flex flex-col bg-zinc-950 text-zinc-100 overflow-hidden font-sans">
@@ -160,6 +213,7 @@ export default function App() {
               onMoveOffset={collection.moveItemOffset}
               onMoveToFirst={collection.moveToFirst}
               onMoveToLast={collection.moveToLast}
+              onOpenPreview={handleOpenPreview}
             />
           )}
         </main>
@@ -170,6 +224,19 @@ export default function App() {
           onUpdateSettings={setSettings}
         />
       </div>
+
+      {/* Big Image Preview Lightbox Modal (New Feature) */}
+      <ImagePreviewModal
+        isOpen={previewState.isOpen && !!currentPreviewImage}
+        image={currentPreviewImage}
+        currentIndex={previewState.index}
+        totalImages={collection.images.length}
+        onClose={handleClosePreview}
+        onNext={handleNextPreview}
+        onPrev={handlePrevPreview}
+        onRemove={handleRemoveFromPreview}
+        onMoveOffset={collection.moveItemOffset}
+      />
 
       {/* Conversion Progress / Result / Error Modal */}
       <ProgressModal

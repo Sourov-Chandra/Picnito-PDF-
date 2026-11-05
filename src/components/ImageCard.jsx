@@ -6,6 +6,7 @@ import {
   ChevronsRight,
   X,
   Check,
+  Maximize2,
   Image as ImageIcon
 } from 'lucide-react';
 import { formatFileSize, formatDimensions } from '../utils/formatters';
@@ -25,6 +26,7 @@ export function ImageCard({
   onDrop,
   onDragEnd,
   isDragging,
+  onOpenPreview,
 }) {
   const [imageError, setImageError] = useState(false);
 
@@ -35,7 +37,7 @@ export function ImageCard({
   const imgSrc =
     image.thumbnailUrl ||
     image.previewUrl ||
-    (image.path ? `picnito-media://${encodeURIComponent(image.path)}` : null);
+    (image.path ? `picnito-media:///${image.path.replace(/\\/g, '/')}` : null);
 
   return (
     <div
@@ -45,6 +47,10 @@ export function ImageCard({
       onDrop={(e) => onDrop(e, index)}
       onDragEnd={onDragEnd}
       onClick={(e) => onSelect(image.id, index, e)}
+      onDoubleClick={(e) => {
+        e.stopPropagation();
+        onOpenPreview(index);
+      }}
       className={`group relative flex flex-col rounded-xl overflow-hidden border transition-all duration-150 select-none cursor-grab active:cursor-grabbing bg-zinc-900/80 ${
         isSelected
           ? 'border-emerald-500 ring-2 ring-emerald-500/30 shadow-lg shadow-emerald-500/10'
@@ -54,7 +60,7 @@ export function ImageCard({
       {/* Sequence Badge (Top Left) — Core requirement from PRD */}
       <div className="absolute top-2.5 left-2.5 z-10 flex items-center gap-1.5">
         <div
-          title={`Page ${index + 1} in generated PDF`}
+          title={`Page ${index + 1} in generated PDF (Double-click card to preview full size)`}
           className={`flex items-center justify-center font-bold text-xs px-2 py-0.5 rounded-md shadow-md backdrop-blur transition ${
             isSelected
               ? 'bg-emerald-500 text-zinc-950 font-extrabold'
@@ -65,8 +71,21 @@ export function ImageCard({
         </div>
       </div>
 
-      {/* Select Checkbox & Remove Button (Top Right) */}
-      <div className="absolute top-2.5 right-2.5 z-10 flex items-center gap-1.5">
+      {/* Action Buttons (Top Right): Maximize/Inspect, Select, Remove */}
+      <div className="absolute top-2.5 right-2.5 z-10 flex items-center gap-1">
+        {/* Fullsize Preview / Inspect Button */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenPreview(index);
+          }}
+          title="Open large preview (Double-click)"
+          className="w-6 h-6 rounded-md bg-zinc-950/70 border border-zinc-700/80 text-zinc-400 hover:text-emerald-400 hover:bg-zinc-950 opacity-0 group-hover:opacity-100 transition flex items-center justify-center backdrop-blur"
+        >
+          <Maximize2 className="w-3.5 h-3.5" />
+        </button>
+
+        {/* Checkbox */}
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -81,13 +100,14 @@ export function ImageCard({
           <Check className="w-3.5 h-3.5 stroke-[3]" />
         </button>
 
+        {/* Remove */}
         <button
           onClick={(e) => {
             e.stopPropagation();
             onRemove(image.id);
           }}
           title="Remove from PDF"
-          className="w-6 h-6 rounded-md bg-zinc-950/70 border border-zinc-700/80 text-zinc-400 hover:text-rose-400 hover:bg-zinc-950 opacity-0 group-hover:opacity-100 transition flex items-center justify-center"
+          className="w-6 h-6 rounded-md bg-zinc-950/70 border border-zinc-700/80 text-zinc-400 hover:text-rose-400 hover:bg-zinc-950 opacity-0 group-hover:opacity-100 transition flex items-center justify-center backdrop-blur"
         >
           <X className="w-3.5 h-3.5" />
         </button>

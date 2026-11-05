@@ -52,6 +52,9 @@ async function getImageMetadata(filePath) {
     const stat = fs.statSync(filePath);
     const meta = await sharp(filePath).rotate().metadata();
 
+    // Standard RFC-compliant media URL for full-res view
+    const fullMediaUrl = pathToFileURL(filePath).href.replace(/^file:/, 'picnito-media:');
+
     // Generate fast lightweight preview thumbnail (base64) for instant rendering
     let thumbnailUrl = null;
     try {
@@ -76,6 +79,7 @@ async function getImageMetadata(filePath) {
       createdAt: stat.birthtimeMs || stat.ctimeMs,
       modifiedAt: stat.mtimeMs,
       thumbnailUrl,
+      fullMediaUrl,
     };
   } catch (err) {
     console.error(`Failed to read metadata for ${filePath}:`, err.message);
@@ -137,16 +141,7 @@ app.whenReady().then(() => {
   // Setup robust local image protocol handler
   protocol.handle('picnito-media', (request) => {
     try {
-      const parsed = new URL(request.url);
-      let filePath = decodeURIComponent(parsed.pathname);
-      if (process.platform === 'win32' && filePath.startsWith('/')) {
-        filePath = filePath.slice(1);
-      }
-      const normalizedPath = path.normalize(filePath);
-      if (!fs.existsSync(normalizedPath)) {
-        return new Response('Not Found', { status: 404 });
-      }
-      const fileUrl = pathToFileURL(normalizedPath).toString();
+      const fileUrl = request.url.replace(/^picnito-media:/, 'file:');
       return net.fetch(fileUrl);
     } catch (err) {
       console.error('Protocol handle error:', err);
