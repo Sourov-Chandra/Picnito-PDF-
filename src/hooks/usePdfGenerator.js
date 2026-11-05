@@ -1,0 +1,126 @@
+import { useState, useEffect, useCallback } from 'react';
+
+export function usePdfGenerator() {
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [progress, setProgress] = useState({
+    current: 0,
+    total: 0,
+    percentage: 0,
+    currentFilename: '',
+    estimatedRemainingSeconds: null,
+  });
+  const [error, setError] = useState(null);
+  const [result, setResult] = useState(null);
+
+  // Subscribe to progress events from Electron
+  useEffect(() => {
+    if (!window.electronAPI?.onPdfProgress) return;
+    const unsubscribe = window.electronAPI.onPdfProgress((data) => {
+      setProgress(data);
+    });
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, []);
+
+  const generate = useCallback(async (images, settings) => {
+    if (!images || images.length === 0) {
+      setError('Please add at least one image to generate a PDF.');
+      return;
+    }
+
+    try {
+      setError(null);
+      setResult(null);
+
+      // Prompt user to select destination save path
+      const defaultName = images.length === 1 
+        ? `${images[0].name.replace(/\.[^/.]+$/, '')}.pdf`
+        : `Picnito_${images.length}_images.pdf`;
+
+      const savePath = await window.electronAPI.selectSavePath(defaultName);
+      if (!savePath) {
+        // User cancelled save dialog
+        return;
+      }
+
+      setIsGenerating(true);
+      setProgress({
+        current: 0,
+        total: images.length,
+        percentage: 0,
+        currentFilename: 'Preparing images...',
+        estimatedRemainingSeconds: null,
+      });
+
+      const response = await window.electronAPI.generatePdf({
+        images,
+        outputPath: savePath,
+        paperSize: settings.paperSize,
+        customDimensions: settings.customDimensions,
+        orientation: settings.orientation,
+        placement: settings.placement,
+        margins: settings.margins,
+        backgroundColor: settings.backgroundColor,
+        qualityPreset: settings.qualityPreset,
+      });
+
+      if (response.success) {
+        setResult(response);
+      } else {
+        setError(response.error || 'Failed to generate PDF.');
+      }
+    } catch (err) {
+      console.error('PDF error:', err);
+      setError(err.message || 'An unexpected error occurred during conversion.');
+    } finally {
+      setIsGenerating(false);
+    }
+  }, []);
+
+  const cancel = useCallback(async () => {
+    try {
+      await window.electronAPI.cancelPdf();
+      setIsGenerating(false);
+      setError('Conversion cancelled by user.');
+    } catch (err) {
+      console.error('Cancel error:', err);
+    }
+  }, []);
+
+  const revealInFolder = useCallback(async (filePath) => {
+    if (window.electronAPI?.revealInFolder) {
+      await window.electronAPI.revealInFolder(filePath);
+    }
+  }, []);
+
+  const openPdf = useCallback(async (filePath) => {
+    if (window.electronAPI?.openFile) {
+      await window.electronAPI.openFile(filePath);
+    }
+  }, []);
+
+  const resetState = useCallback(() => {
+    setError(null);
+    setResult(null);
+    setProgress({
+      current: 0,
+      total: 0,
+      percentage: 0,
+      currentFilename: '',
+      estimatedRemainingSeconds: null,
+    });
+  }, []);
+
+  return {
+    isGenerating,
+    progress,
+    error,
+    result,
+    generate,
+    cancel,
+    revealInFolder,
+    openPdf,
+    resetState,
+  };
+}
