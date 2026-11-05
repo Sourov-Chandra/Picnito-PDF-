@@ -23,9 +23,16 @@ export function usePdfGenerator() {
     };
   }, []);
 
-  const generate = useCallback(async (images, settings) => {
+  const generate = useCallback(async (images, settings, confirmOverwrite) => {
     if (!images || images.length === 0) {
       setError('Please add at least one image to generate a PDF.');
+      return;
+    }
+
+    if (!window.electronAPI?.generatePdf) {
+      setError(
+        'Electron desktop APIs not detected. Please ensure you are running the desktop app with "npm run electron:dev".'
+      );
       return;
     }
 
@@ -33,15 +40,39 @@ export function usePdfGenerator() {
       setError(null);
       setResult(null);
 
-      // Prompt user to select destination save path
-      const defaultName = images.length === 1 
-        ? `${images[0].name.replace(/\.[^/.]+$/, '')}.pdf`
-        : `Picnito_${images.length}_images.pdf`;
+      let savePath = null;
+      let filename = (settings.outputFilename || 'Picnito_Document.pdf').trim();
+      if (!filename.toLowerCase().endsWith('.pdf')) {
+        filename += '.pdf';
+      }
 
-      const savePath = await window.electronAPI.selectSavePath(defaultName);
-      if (!savePath) {
-        // User cancelled save dialog
-        return;
+      // Check Save Mode: Custom Folder vs Prompt Dialog
+      if (settings.saveMode === 'folder' && settings.outputFolder) {
+        const folder = settings.outputFolder.replace(/[/\\]+$/, '');
+        const sep = folder.includes('/') ? '/' : '\\';
+        savePath = `${folder}${sep}${filename}`;
+
+        // Check if file already exists
+        if (window.electronAPI?.checkFileExists) {
+          const exists = await window.electronAPI.checkFileExists(savePath);
+          if (exists && typeof confirmOverwrite === 'function') {
+            const confirmed = await confirmOverwrite(savePath);
+            if (!confirmed) {
+              return; // User declined overwrite
+            }
+          }
+        }
+      } else {
+        // Prompt Save Dialog (starting with outputFolder if set)
+        const defaultSaveTarget = settings.outputFolder
+          ? `${settings.outputFolder.replace(/[/\\]+$/, '')}\\${filename}`
+          : filename;
+
+        savePath = await window.electronAPI.selectSavePath(defaultSaveTarget);
+        if (!savePath) {
+          // User cancelled save dialog
+          return;
+        }
       }
 
       setIsGenerating(true);
@@ -49,7 +80,7 @@ export function usePdfGenerator() {
         current: 0,
         total: images.length,
         percentage: 0,
-        currentFilename: 'Preparing images...',
+        currentFilename: 'Initializing PDF document...',
         estimatedRemainingSeconds: null,
       });
 
@@ -71,7 +102,7 @@ export function usePdfGenerator() {
         setError(response.error || 'Failed to generate PDF.');
       }
     } catch (err) {
-      console.error('PDF error:', err);
+      console.error('PDF generation error:', err);
       setError(err.message || 'An unexpected error occurred during conversion.');
     } finally {
       setIsGenerating(false);
@@ -80,7 +111,9 @@ export function usePdfGenerator() {
 
   const cancel = useCallback(async () => {
     try {
-      await window.electronAPI.cancelPdf();
+      if (window.electronAPI?.cancelPdf) {
+        await window.electronAPI.cancelPdf();
+      }
       setIsGenerating(false);
       setError('Conversion cancelled by user.');
     } catch (err) {

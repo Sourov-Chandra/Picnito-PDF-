@@ -15,6 +15,9 @@ export default function App() {
 
   // Settings State
   const [settings, setSettings] = useState({
+    saveMode: 'folder', // 'folder' | 'prompt'
+    outputFolder: '',
+    outputFilename: 'Picnito_Document.pdf',
     paperSize: 'A4',
     customDimensions: {
       width: 210,
@@ -38,8 +41,10 @@ export default function App() {
     title: '',
     message: '',
     confirmLabel: 'Confirm',
+    cancelLabel: 'Cancel',
     isDestructive: false,
     onConfirm: () => {},
+    onCancel: () => {},
   });
 
   // Global Keyboard Shortcuts
@@ -80,16 +85,39 @@ export default function App() {
       title: 'Clear All Images?',
       message: 'This will remove all currently loaded images and reset the sequence.',
       confirmLabel: 'Clear All',
+      cancelLabel: 'Cancel',
       isDestructive: true,
       onConfirm: () => {
         collection.clearAll();
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+      },
+      onCancel: () => {
         setConfirmModal((prev) => ({ ...prev, isOpen: false }));
       },
     });
   };
 
   const handleStartPdfGeneration = () => {
-    generator.generate(collection.images, settings);
+    generator.generate(collection.images, settings, (targetPath) => {
+      return new Promise((resolve) => {
+        setConfirmModal({
+          isOpen: true,
+          title: 'File Already Exists',
+          message: `"${targetPath}" already exists in your destination folder. Do you want to overwrite it?`,
+          confirmLabel: 'Overwrite',
+          cancelLabel: 'Cancel',
+          isDestructive: true,
+          onConfirm: () => {
+            setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+            resolve(true);
+          },
+          onCancel: () => {
+            setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+            resolve(false);
+          },
+        });
+      });
+    });
   };
 
   return (
@@ -170,9 +198,10 @@ export default function App() {
         title={confirmModal.title}
         message={confirmModal.message}
         confirmLabel={confirmModal.confirmLabel}
+        cancelLabel={confirmModal.cancelLabel}
         isDestructive={confirmModal.isDestructive}
         onConfirm={confirmModal.onConfirm}
-        onCancel={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+        onCancel={confirmModal.onCancel}
       />
     </div>
   );

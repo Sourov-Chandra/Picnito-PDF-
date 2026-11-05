@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { UploadCloud, FolderPlus, Plus, Image as ImageIcon } from 'lucide-react';
 
 export function DropZone({ onFilesSelected, onFolderSelected, hasImages }) {
   const [isDragOver, setIsDragOver] = useState(false);
+  const fileInputRef = useRef(null);
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -16,42 +17,107 @@ export function DropZone({ onFilesSelected, onFolderSelected, hasImages }) {
     setIsDragOver(false);
   };
 
+  const processFiles = async (files) => {
+    if (!files || !files.length) return;
+    const imageExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.bmp', '.tiff', '.tif'];
+
+    // 1. Check if Electron environment with native paths
+    if (window.electronAPI?.getImageDetails) {
+      const validPaths = files
+        .map((f) => f.path)
+        .filter((p) => p && imageExtensions.some((ext) => p.toLowerCase().endsWith(ext)));
+
+      if (validPaths.length > 0) {
+        const details = await window.electronAPI.getImageDetails(validPaths);
+        onFilesSelected(details.filter((d) => d.success));
+        return;
+      }
+    }
+
+    // 2. Browser fallback for web preview mode
+    const validFiles = files.filter(
+      (f) =>
+        imageExtensions.some((ext) => f.name.toLowerCase().endsWith(ext)) ||
+        f.type?.startsWith('image/')
+    );
+
+    if (validFiles.length > 0) {
+      const items = await Promise.all(
+        validFiles.map(
+          (f) =>
+            new Promise((resolve) => {
+              const previewUrl = URL.createObjectURL(f);
+              const img = new Image();
+              img.onload = () => {
+                resolve({
+                  name: f.name,
+                  path: f.path || f.name,
+                  size: f.size,
+                  width: img.naturalWidth || 800,
+                  height: img.naturalHeight || 600,
+                  format: f.type?.replace('image/', '') || 'jpg',
+                  previewUrl,
+                  createdAt: f.lastModified,
+                  modifiedAt: f.lastModified,
+                });
+              };
+              img.onerror = () => {
+                resolve({
+                  name: f.name,
+                  path: f.path || f.name,
+                  size: f.size,
+                  width: 0,
+                  height: 0,
+                  format: f.type?.replace('image/', '') || 'jpg',
+                  previewUrl,
+                  createdAt: f.lastModified,
+                  modifiedAt: f.lastModified,
+                });
+              };
+              img.src = previewUrl;
+            })
+        )
+      );
+      onFilesSelected(items);
+    }
+  };
+
   const handleDrop = async (e) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(false);
-
     const files = Array.from(e.dataTransfer.files);
-    if (!files.length) return;
-
-    // Filter image files by extension
-    const imageExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.bmp', '.tiff', '.tif'];
-    const validPaths = files
-      .map((f) => f.path)
-      .filter((p) => p && imageExtensions.some((ext) => p.toLowerCase().endsWith(ext)));
-
-    if (validPaths.length && window.electronAPI?.getImageDetails) {
-      const details = await window.electronAPI.getImageDetails(validPaths);
-      onFilesSelected(details.filter((d) => d.success));
-    }
+    await processFiles(files);
   };
 
   const handleChooseFiles = async () => {
-    if (!window.electronAPI?.selectFiles) return;
-    const paths = await window.electronAPI.selectFiles();
-    if (paths && paths.length) {
-      const details = await window.electronAPI.getImageDetails(paths);
-      onFilesSelected(details.filter((d) => d.success));
+    if (window.electronAPI?.selectFiles) {
+      const paths = await window.electronAPI.selectFiles();
+      if (paths && paths.length) {
+        const details = await window.electronAPI.getImageDetails(paths);
+        onFilesSelected(details.filter((d) => d.success));
+      }
+    } else if (fileInputRef.current) {
+      fileInputRef.current.click();
     }
   };
 
   const handleChooseFolder = async () => {
-    if (!window.electronAPI?.selectFolder) return;
-    const paths = await window.electronAPI.selectFolder();
-    if (paths && paths.length) {
-      const details = await window.electronAPI.getImageDetails(paths);
-      onFilesSelected(details.filter((d) => d.success));
+    if (window.electronAPI?.selectFolder) {
+      const paths = await window.electronAPI.selectFolder();
+      if (paths && paths.length) {
+        const details = await window.electronAPI.getImageDetails(paths);
+        onFilesSelected(details.filter((d) => d.success));
+      }
+    } else {
+      alert('Folder selection is available when running in the Picnito PDF Desktop application.');
     }
+  };
+
+  const handleFileInputChange = async (e) => {
+    const files = Array.from(e.target.files || []);
+    await processFiles(files);
+    e.target.value = '';
   };
 
   if (hasImages) {
@@ -65,6 +131,14 @@ export function DropZone({ onFilesSelected, onFolderSelected, hasImages }) {
           isDragOver ? 'border-emerald-500 bg-emerald-500/10' : 'border-zinc-800/80'
         }`}
       >
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept=".jpg,.jpeg,.png,.webp,.bmp,.tiff"
+          className="hidden"
+          onChange={handleFileInputChange}
+        />
         <div className="flex items-center gap-2 text-xs text-zinc-400">
           <UploadCloud className="w-4 h-4 text-emerald-400" />
           <span>Drag and drop more images here, or add via:</span>
@@ -101,6 +175,14 @@ export function DropZone({ onFilesSelected, onFolderSelected, hasImages }) {
           : 'border-2 border-dashed border-zinc-800/80 bg-zinc-950/40 hover:border-zinc-700'
       } rounded-2xl m-6`}
     >
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept=".jpg,.jpeg,.png,.webp,.bmp,.tiff"
+        className="hidden"
+        onChange={handleFileInputChange}
+      />
       <div className="w-20 h-20 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-6 shadow-xl text-emerald-400">
         <UploadCloud className="w-10 h-10 stroke-[1.5]" />
       </div>
@@ -109,7 +191,7 @@ export function DropZone({ onFilesSelected, onFolderSelected, hasImages }) {
         Drop images here to start building your PDF
       </h2>
       <p className="text-sm text-zinc-400 max-w-md text-center mb-8">
-        Import textbook scans, document photos, or pictures. Picnito PDF preserves your exact sequence and processes hundreds of pages locally with zero RAM overload.
+        Import textbook scans, document photos, or pictures. Picnito PDF preserves your exact sequence and processes hundreds of pages locally with zero memory overload.
       </p>
 
       <div className="flex items-center gap-3 mb-8">

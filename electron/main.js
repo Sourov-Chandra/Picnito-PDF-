@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog, shell, protocol, net } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { pathToFileURL } = require('url');
 const sharp = require('sharp');
 const pdfService = require('./pdfService');
 
@@ -49,7 +50,21 @@ function scanFolderForImages(dirPath) {
 async function getImageMetadata(filePath) {
   try {
     const stat = fs.statSync(filePath);
-    const meta = await sharp(filePath).metadata();
+    const meta = await sharp(filePath).rotate().metadata();
+
+    // Generate fast lightweight preview thumbnail (base64) for instant rendering
+    let thumbnailUrl = null;
+    try {
+      const thumbBuf = await sharp(filePath)
+        .rotate()
+        .resize(320, 240, { fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 80 })
+        .toBuffer();
+      thumbnailUrl = `data:image/jpeg;base64,${thumbBuf.toString('base64')}`;
+    } catch (thumbErr) {
+      console.warn(`Could not create thumbnail buffer for ${filePath}:`, thumbErr.message);
+    }
+
     return {
       success: true,
       path: filePath,
@@ -60,6 +75,7 @@ async function getImageMetadata(filePath) {
       format: meta.format || path.extname(filePath).replace('.', ''),
       createdAt: stat.birthtimeMs || stat.ctimeMs,
       modifiedAt: stat.mtimeMs,
+      thumbnailUrl,
     };
   } catch (err) {
     console.error(`Failed to read metadata for ${filePath}:`, err.message);
@@ -74,6 +90,7 @@ async function getImageMetadata(filePath) {
       format: path.extname(filePath).replace('.', ''),
       createdAt: stat.birthtimeMs || 0,
       modifiedAt: stat.mtimeMs || 0,
+      thumbnailUrl: null,
       error: err.message,
     };
   }
@@ -117,14 +134,20 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-  // Setup local image protocol handler
+  // Setup robust local image protocol handler
   protocol.handle('picnito-media', (request) => {
     try {
-      // Decode URL format picnito-media://path/to/file
-      const rawUrl = request.url.replace(/^picnito-media:\/\/+/, '');
-      const decodedPath = decodeURIComponent(rawUrl);
-      const normalizedPath = path.normalize(decodedPath);
-      return net.fetch(`file:///${normalizedPath.replace(/\\/g, '/')}`);
+      const parsed = new URL(request.url);
+      let filePath = decodeURIComponent(parsed.pathname);
+      if (process.platform === 'win32' && filePath.startsWith('/')) {
+        filePath = filePath.slice(1);
+      }
+      const normalizedPath = path.normalize(filePath);
+      if (!fs.existsSync(normalizedPath)) {
+        return new Response('Not Found', { status: 404 });
+      }
+      const fileUrl = pathToFileURL(normalizedPath).toString();
+      return net.fetch(fileUrl);
     } catch (err) {
       console.error('Protocol handle error:', err);
       return new Response('Not Found', { status: 404 });
@@ -162,16 +185,43 @@ app.whenReady().then(() => {
     return scanFolderForImages(folderPath);
   });
 
-  ipcMain.handle('dialog:select-save-path', async (_event, defaultName) => {
+  // Choose preferred output directory
+  ipcMain.handle('dialog:select-output-folder', async () => {
+    if (!mainWindow) return null;
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: 'Select Preferred Output Folder for PDFs',
+      properties: ['openDirectory', 'createDirectory'],
+    });
+
+    if (result.canceled || !result.filePaths.length) return null;
+    return result.filePaths[0];
+  });
+
+  // Choose save file path via Save Dialog
+  ipcMain.handle('dialog:select-save-path', async (_event, defaultPathOrName) => {
     if (!mainWindow) return null;
     const result = await dialog.showSaveDialog(mainWindow, {
       title: 'Save Generated PDF',
-      defaultPath: defaultName || 'Picnito_Document.pdf',
+      defaultPath: defaultPathOrName || 'Picnito_Document.pdf',
       filters: [{ name: 'PDF Document', extensions: ['pdf'] }],
     });
 
     if (result.canceled || !result.filePath) return null;
     return result.filePath;
+  });
+
+  // System default paths
+  ipcMain.handle('app:get-default-paths', async () => {
+    return {
+      desktop: app.getPath('desktop'),
+      documents: app.getPath('documents'),
+      downloads: app.getPath('downloads'),
+    };
+  });
+
+  // Check if file exists
+  ipcMain.handle('file:check-exists', async (_event, filePath) => {
+    return fs.existsSync(filePath);
   });
 
   ipcMain.handle('image:get-details', async (_event, filePaths) => {

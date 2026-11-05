@@ -6,7 +6,7 @@ import {
   ChevronsRight,
   X,
   Check,
-  Maximize2
+  Image as ImageIcon
 } from 'lucide-react';
 import { formatFileSize, formatDimensions } from '../utils/formatters';
 
@@ -28,8 +28,14 @@ export function ImageCard({
 }) {
   const [imageError, setImageError] = useState(false);
 
-  // Encode path for custom protocol: picnito-media://
-  const mediaUrl = `picnito-media://${encodeURIComponent(image.path)}`;
+  // Determine image source:
+  // 1. Sharp generated base64 thumbnail (instant, auto-rotated, low-memory)
+  // 2. Browser ObjectURL (if imported via HTML5 file drop)
+  // 3. Custom Electron picnito-media protocol
+  const imgSrc =
+    image.thumbnailUrl ||
+    image.previewUrl ||
+    (image.path ? `picnito-media://${encodeURIComponent(image.path)}` : null);
 
   return (
     <div
@@ -89,17 +95,18 @@ export function ImageCard({
 
       {/* Thumbnail Container */}
       <div className="relative aspect-[4/3] bg-zinc-950 flex items-center justify-center overflow-hidden">
-        {!imageError ? (
+        {imgSrc && !imageError ? (
           <img
-            src={mediaUrl}
+            src={imgSrc}
             alt={image.name}
             onError={() => setImageError(true)}
             className="w-full h-full object-contain pointer-events-none transition-transform duration-200 group-hover:scale-105"
             loading="lazy"
           />
         ) : (
-          <div className="text-zinc-400 text-xs text-center p-3">
-            Unable to load preview
+          <div className="flex flex-col items-center justify-center text-zinc-500 p-3 text-center">
+            <ImageIcon className="w-6 h-6 mb-1 stroke-1" />
+            <span className="text-[11px] leading-tight">Preview not available</span>
           </div>
         )}
 

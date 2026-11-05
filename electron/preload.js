@@ -4,7 +4,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // File Dialogs
   selectFiles: () => ipcRenderer.invoke('dialog:select-files'),
   selectFolder: () => ipcRenderer.invoke('dialog:select-folder'),
+  selectOutputFolder: () => ipcRenderer.invoke('dialog:select-output-folder'),
   selectSavePath: (defaultName) => ipcRenderer.invoke('dialog:select-save-path', defaultName),
+
+  // System Paths & File Queries
+  getDefaultPaths: () => ipcRenderer.invoke('app:get-default-paths'),
+  checkFileExists: (filePath) => ipcRenderer.invoke('file:check-exists', filePath),
 
   // Image Processing / Metadata
   getImageDetails: (filePaths) => ipcRenderer.invoke('image:get-details', filePaths),

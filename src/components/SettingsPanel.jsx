@@ -1,14 +1,15 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Sliders,
   Maximize,
   Minimize,
   StretchHorizontal,
-  Square,
-  Layers,
-  Sparkles,
-  Palette,
-  FileCheck
+  Folder,
+  FolderOpen,
+  FileText,
+  Monitor,
+  HardDrive,
+  Check
 } from 'lucide-react';
 import {
   PAPER_SIZES,
@@ -23,8 +24,44 @@ export function SettingsPanel({
   isOpen,
   onToggleOpen,
 }) {
+  const [defaultPaths, setDefaultPaths] = useState({
+    desktop: '',
+    documents: '',
+    downloads: '',
+  });
+
+  // Fetch OS default paths (Desktop, Documents, Downloads) on mount
+  useEffect(() => {
+    if (window.electronAPI?.getDefaultPaths) {
+      window.electronAPI.getDefaultPaths().then((paths) => {
+        if (paths) {
+          setDefaultPaths(paths);
+          // If no output folder is set yet, default to Desktop
+          if (!settings.outputFolder && paths.desktop) {
+            onUpdateSettings({ ...settings, outputFolder: paths.desktop });
+          }
+        }
+      });
+    }
+  }, []);
+
   const handleChange = (key, value) => {
     onUpdateSettings({ ...settings, [key]: value });
+  };
+
+  const handleChooseOutputFolder = async () => {
+    if (window.electronAPI?.selectOutputFolder) {
+      const selected = await window.electronAPI.selectOutputFolder();
+      if (selected) {
+        onUpdateSettings({
+          ...settings,
+          outputFolder: selected,
+          saveMode: 'folder',
+        });
+      }
+    } else {
+      alert('Folder selection is available in the Picnito PDF desktop app.');
+    }
   };
 
   const handleCustomDimensionChange = (field, val) => {
@@ -69,17 +106,145 @@ export function SettingsPanel({
   };
 
   return (
-    <aside className="w-80 border-l border-zinc-800 bg-zinc-900/95 flex flex-col h-full shrink-0 select-none">
+    <aside className="w-84 border-l border-zinc-800 bg-zinc-900/95 flex flex-col h-full shrink-0 select-none">
       {/* Sidebar Header */}
       <div className="h-14 border-b border-zinc-800 px-5 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2 text-zinc-100 font-semibold text-sm">
           <Sliders className="w-4 h-4 text-emerald-400" />
-          <span>PDF Page Configuration</span>
+          <span>Output & PDF Settings</span>
         </div>
       </div>
 
       {/* Settings Form Container */}
       <div className="flex-1 overflow-y-auto p-5 space-y-6 text-xs">
+        {/* =========================================
+            0. Output Folder & Destination (Requested by user)
+            ========================================= */}
+        <div className="p-3.5 bg-zinc-950/80 border border-emerald-500/30 rounded-xl space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="text-zinc-200 font-semibold flex items-center gap-1.5">
+              <Folder className="w-3.5 h-3.5 text-emerald-400" />
+              Save Destination
+            </label>
+            <span className="text-[10px] text-emerald-400/90 font-medium bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+              Preferable Folder
+            </span>
+          </div>
+
+          {/* Mode Switch: Save Directly to Folder vs Ask Every Time */}
+          <div className="grid grid-cols-2 gap-1 bg-zinc-900 p-0.5 rounded-lg border border-zinc-800">
+            <button
+              type="button"
+              onClick={() => handleChange('saveMode', 'folder')}
+              className={`py-1.5 px-2 rounded-md font-medium transition text-center ${
+                settings.saveMode === 'folder'
+                  ? 'bg-emerald-500 text-zinc-950 font-bold shadow-sm'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              Custom Folder
+            </button>
+            <button
+              type="button"
+              onClick={() => handleChange('saveMode', 'prompt')}
+              className={`py-1.5 px-2 rounded-md font-medium transition text-center ${
+                settings.saveMode === 'prompt'
+                  ? 'bg-emerald-500 text-zinc-950 font-bold shadow-sm'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              Ask Each Time
+            </button>
+          </div>
+
+          {/* Destination Folder Selector */}
+          {settings.saveMode === 'folder' ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div
+                  title={settings.outputFolder || 'No folder selected'}
+                  className="flex-1 bg-zinc-900 border border-zinc-700/80 rounded-lg px-2.5 py-2 text-zinc-200 text-[11px] truncate font-mono"
+                >
+                  {settings.outputFolder || 'Select a folder below...'}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleChooseOutputFolder}
+                  className="px-3 py-2 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-semibold rounded-lg transition flex items-center gap-1 shrink-0"
+                >
+                  <FolderOpen className="w-3.5 h-3.5" />
+                  Browse
+                </button>
+              </div>
+
+              {/* Quick Preset Buttons (Desktop, Documents, Downloads) */}
+              {defaultPaths.desktop && (
+                <div className="flex items-center gap-1.5 pt-0.5">
+                  <span className="text-[10px] text-zinc-500">Quick set:</span>
+                  <button
+                    type="button"
+                    onClick={() => handleChange('outputFolder', defaultPaths.desktop)}
+                    className={`px-2 py-0.5 rounded text-[10px] transition border ${
+                      settings.outputFolder === defaultPaths.desktop
+                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                        : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-zinc-200'
+                    }`}
+                  >
+                    Desktop
+                  </button>
+                  {defaultPaths.documents && (
+                    <button
+                      type="button"
+                      onClick={() => handleChange('outputFolder', defaultPaths.documents)}
+                      className={`px-2 py-0.5 rounded text-[10px] transition border ${
+                        settings.outputFolder === defaultPaths.documents
+                          ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                          : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-zinc-200'
+                      }`}
+                    >
+                      Documents
+                    </button>
+                  )}
+                  {defaultPaths.downloads && (
+                    <button
+                      type="button"
+                      onClick={() => handleChange('outputFolder', defaultPaths.downloads)}
+                      className={`px-2 py-0.5 rounded text-[10px] transition border ${
+                        settings.outputFolder === defaultPaths.downloads
+                          ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                          : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-zinc-200'
+                      }`}
+                    >
+                      Downloads
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-[11px] text-zinc-400 italic">
+              A standard Windows save dialog will prompt you to choose folder & file name on generation.
+            </p>
+          )}
+
+          {/* Filename Input */}
+          <div className="pt-1">
+            <span className="text-[11px] text-zinc-400 block mb-1">
+              Default PDF Filename:
+            </span>
+            <div className="flex items-center bg-zinc-900 border border-zinc-700/80 rounded-lg px-2.5 py-1.5">
+              <FileText className="w-3.5 h-3.5 text-zinc-400 mr-2 shrink-0" />
+              <input
+                type="text"
+                value={settings.outputFilename || 'Picnito_Document.pdf'}
+                onChange={(e) => handleChange('outputFilename', e.target.value)}
+                placeholder="document.pdf"
+                className="bg-transparent w-full text-zinc-100 text-xs focus:outline-none font-mono"
+              />
+            </div>
+          </div>
+        </div>
+
         {/* 1. Paper Size */}
         <div>
           <label className="block text-zinc-300 font-medium mb-2">
