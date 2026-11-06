@@ -6,7 +6,8 @@ import {
   AlertCircle,
   X,
   Loader2,
-  CheckCircle2
+  CheckCircle2,
+  Layers
 } from 'lucide-react';
 import { formatDuration } from '../utils/formatters';
 
@@ -20,13 +21,16 @@ export function ProgressModal({
   onClose,
   onRevealFolder,
   onOpenFile,
+  mode = 'images', // 'images' | 'merge'
 }) {
   if (!isOpen) return null;
+
+  const isMergeMode = mode === 'merge';
 
   return (
     <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        {/* Active Generation State */}
+        {/* Active Generation / Merging State */}
         {isGenerating && (
           <div className="p-6">
             <div className="flex items-center justify-between mb-4">
@@ -36,10 +40,12 @@ export function ProgressModal({
                 </div>
                 <div>
                   <h3 className="text-base font-semibold text-zinc-100">
-                    Generating PDF...
+                    {isMergeMode ? 'Merging PDF Files...' : 'Generating PDF...'}
                   </h3>
                   <p className="text-xs text-zinc-400">
-                    Processing images sequentially with zero memory overhead
+                    {isMergeMode
+                      ? 'Combining pages in exact sequential order'
+                      : 'Processing images sequentially with zero memory overhead'}
                   </p>
                 </div>
               </div>
@@ -65,12 +71,20 @@ export function ProgressModal({
 
               <div className="flex items-center justify-between text-[11px] text-zinc-400 pt-1">
                 <span>
-                  Processed <strong>{progress.current}</strong> of <strong>{progress.total}</strong> pages
+                  {isMergeMode ? (
+                    <>
+                      Merged <strong>{progress.current}</strong> of <strong>{progress.total}</strong> files
+                    </>
+                  ) : (
+                    <>
+                      Processed <strong>{progress.current}</strong> of <strong>{progress.total}</strong> pages
+                    </>
+                  )}
                 </span>
                 <span>
                   {progress.estimatedRemainingSeconds
                     ? `Est. remaining: ${formatDuration(progress.estimatedRemainingSeconds)}`
-                    : 'Calculating time...'}
+                    : ''}
                 </span>
               </div>
             </div>
@@ -80,7 +94,7 @@ export function ProgressModal({
                 onClick={onCancel}
                 className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white text-xs font-semibold rounded-lg border border-zinc-700 transition"
               >
-                Cancel Conversion
+                Cancel Operation
               </button>
             </div>
           </div>
@@ -95,10 +109,12 @@ export function ProgressModal({
               </div>
               <div>
                 <h3 className="text-base font-semibold text-zinc-100">
-                  PDF Generated Successfully!
+                  {isMergeMode ? 'PDFs Merged Successfully!' : 'PDF Generated Successfully!'}
                 </h3>
                 <p className="text-xs text-zinc-400">
-                  {result.totalImages} pages assembled in {result.elapsedSeconds?.toFixed(1)}s
+                  {isMergeMode
+                    ? `${result.totalFiles} files (${result.totalPages} pages) combined in ${result.elapsedSeconds?.toFixed(2)}s`
+                    : `${result.totalImages} pages assembled in ${result.elapsedSeconds?.toFixed(1)}s`}
                 </p>
               </div>
             </div>
@@ -146,7 +162,7 @@ export function ProgressModal({
               </div>
               <div>
                 <h3 className="text-base font-semibold text-zinc-100">
-                  Conversion Issue
+                  {isMergeMode ? 'Merge Issue' : 'Conversion Issue'}
                 </h3>
                 <p className="text-xs text-rose-400/90 font-medium">
                   The operation could not be completed

@@ -4,6 +4,7 @@ const fs = require('fs');
 const { pathToFileURL } = require('url');
 const sharp = require('sharp');
 const pdfService = require('./pdfService');
+const pdfMergeService = require('./pdfMergeService');
 
 // Disable Sharp file caching on Windows to avoid file locks
 sharp.cache(false);
@@ -202,6 +203,19 @@ app.whenReady().then(() => {
     return scanFolderForImages(folderPath);
   });
 
+  // Select PDF Files for Merging
+  ipcMain.handle('dialog:select-pdf-files', async () => {
+    if (!mainWindow) return [];
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: 'Select PDF Files to Merge',
+      properties: ['openFile', 'multiSelections'],
+      filters: [{ name: 'PDF Documents', extensions: ['pdf'] }],
+    });
+
+    if (result.canceled || !result.filePaths.length) return [];
+    return result.filePaths;
+  });
+
   // Choose preferred output directory
   ipcMain.handle('dialog:select-output-folder', async () => {
     if (!mainWindow) return null;
@@ -270,6 +284,33 @@ app.whenReady().then(() => {
 
   ipcMain.handle('pdf:cancel', async () => {
     pdfService.cancel();
+    return { success: true };
+  });
+
+  // PDF Merge Handlers
+  ipcMain.handle('pdf:get-details', async (_event, filePaths) => {
+    return pdfMergeService.getPdfDetails(filePaths);
+  });
+
+  ipcMain.handle('pdf:merge', async (_event, options) => {
+    try {
+      const result = await pdfMergeService.merge({
+        ...options,
+        onProgress: (progress) => {
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('pdf:merge-progress', progress);
+          }
+        },
+      });
+      return { success: true, ...result };
+    } catch (error) {
+      console.error('PDF merge error:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('pdf:cancel-merge', async () => {
+    pdfMergeService.cancel();
     return { success: true };
   });
 

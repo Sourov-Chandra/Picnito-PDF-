@@ -3,20 +3,25 @@ import { Header } from './components/Header';
 import { DropZone } from './components/DropZone';
 import { ImageGrid } from './components/ImageGrid';
 import { SettingsPanel } from './components/SettingsPanel';
+import { PdfMergeView } from './components/PdfMergeView';
+import { MergeSettingsPanel } from './components/MergeSettingsPanel';
 import { ProgressModal } from './components/ProgressModal';
 import { SortModal } from './components/SortModal';
 import { ConfirmModal } from './components/ConfirmModal';
 import { ImagePreviewModal } from './components/ImagePreviewModal';
 import { useImageCollection } from './hooks/useImageCollection';
 import { usePdfGenerator } from './hooks/usePdfGenerator';
+import { usePdfMerger } from './hooks/usePdfMerger';
 
 export default function App() {
+  const [activeMode, setActiveMode] = useState('images'); // 'images' | 'merge'
+
+  // Image to PDF State & Hooks
   const collection = useImageCollection();
   const generator = usePdfGenerator();
 
-  // Settings State
   const [settings, setSettings] = useState({
-    askEachTime: false, // Checkbox mark selection
+    askEachTime: false,
     outputFolder: '',
     outputFilename: 'Picnito_Document.pdf',
     paperSize: 'A4',
@@ -35,7 +40,16 @@ export default function App() {
     qualityPreset: 'balanced',
   });
 
-  // Modal states
+  // PDF Merge State & Hooks
+  const merger = usePdfMerger();
+
+  const [mergeSettings, setMergeSettings] = useState({
+    askEachTime: false,
+    outputFolder: '',
+    outputFilename: 'Merged_Picnito.pdf',
+  });
+
+  // Modals state
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [previewState, setPreviewState] = useState({
     isOpen: false,
@@ -56,38 +70,36 @@ export default function App() {
   // Global Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Don't intercept if typing in an input
       if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
-
-      // If big preview is open, let ImagePreviewModal handle its own keys
       if (previewState.isOpen) return;
 
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
-        e.preventDefault();
-        collection.selectAll();
-      } else if (e.key === 'Escape') {
-        collection.clearSelection();
-      } else if (e.key === 'Delete' || e.key === 'Backspace') {
-        if (collection.selectedIds.size > 0) {
+      if (activeMode === 'images') {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
           e.preventDefault();
-          collection.removeSelected();
-        }
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
-        if (e.shiftKey) {
-          collection.redo();
-        } else {
-          collection.undo();
-        }
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
-        collection.redo();
-      } else if (e.key === ' ' || e.key === 'Enter') {
-        // Space or Enter opens preview for first selected image
-        if (collection.selectedIds.size > 0) {
-          const firstSelectedId = Array.from(collection.selectedIds)[0];
-          const foundIdx = collection.images.findIndex((img) => img.id === firstSelectedId);
-          if (foundIdx !== -1) {
+          collection.selectAll();
+        } else if (e.key === 'Escape') {
+          collection.clearSelection();
+        } else if (e.key === 'Delete' || e.key === 'Backspace') {
+          if (collection.selectedIds.size > 0) {
             e.preventDefault();
-            setPreviewState({ isOpen: true, index: foundIdx });
+            collection.removeSelected();
+          }
+        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+          if (e.shiftKey) {
+            collection.redo();
+          } else {
+            collection.undo();
+          }
+        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+          collection.redo();
+        } else if (e.key === ' ' || e.key === 'Enter') {
+          if (collection.selectedIds.size > 0) {
+            const firstSelectedId = Array.from(collection.selectedIds)[0];
+            const foundIdx = collection.images.findIndex((img) => img.id === firstSelectedId);
+            if (foundIdx !== -1) {
+              e.preventDefault();
+              setPreviewState({ isOpen: true, index: foundIdx });
+            }
           }
         }
       }
@@ -95,7 +107,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [collection, previewState.isOpen]);
+  }, [collection, previewState.isOpen, activeMode]);
 
   // Preview Handlers
   const handleOpenPreview = (index) => {
@@ -129,6 +141,7 @@ export default function App() {
     }
   };
 
+  // Clear Confirmations
   const handleClearAllConfirm = () => {
     setConfirmModal({
       isOpen: true,
@@ -148,6 +161,25 @@ export default function App() {
     });
   };
 
+  const handleClearAllPdfsConfirm = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Clear All PDF Files?',
+      message: 'This will remove all PDF files from the merge list.',
+      confirmLabel: 'Clear All',
+      cancelLabel: 'Cancel',
+      isDestructive: true,
+      onConfirm: () => {
+        merger.clearAllPdfs();
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+      },
+      onCancel: () => {
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+      },
+    });
+  };
+
+  // Generation & Merge Execution
   const handleStartPdfGeneration = () => {
     generator.generate(collection.images, settings, (targetPath) => {
       return new Promise((resolve) => {
@@ -171,12 +203,44 @@ export default function App() {
     });
   };
 
+  const handleStartPdfMerge = () => {
+    merger.merge(mergeSettings, (targetPath) => {
+      return new Promise((resolve) => {
+        setConfirmModal({
+          isOpen: true,
+          title: 'File Already Exists',
+          message: `"${targetPath}" already exists in your destination folder. Do you want to overwrite it?`,
+          confirmLabel: 'Overwrite',
+          cancelLabel: 'Cancel',
+          isDestructive: true,
+          onConfirm: () => {
+            setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+            resolve(true);
+          },
+          onCancel: () => {
+            setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+            resolve(false);
+          },
+        });
+      });
+    });
+  };
+
   const currentPreviewImage = collection.images[previewState.index] || null;
+
+  // Active operation status
+  const isOperating = generator.isGenerating || merger.isMerging;
+  const currentResult = activeMode === 'merge' ? merger.mergeResult : generator.result;
+  const currentError = activeMode === 'merge' ? merger.mergeError : generator.error;
+  const currentProgress = activeMode === 'merge' ? merger.mergeProgress : generator.progress;
 
   return (
     <div className="h-screen w-screen flex flex-col bg-zinc-950 text-zinc-100 overflow-hidden font-sans">
-      {/* App Header */}
+      {/* Top Header */}
       <Header
+        activeMode={activeMode}
+        onChangeMode={setActiveMode}
+        // Images Mode
         imageCount={collection.totalCount}
         totalSize={collection.formattedTotalSize}
         selectedCount={collection.selectedIds.size}
@@ -191,41 +255,76 @@ export default function App() {
         onOpenSortMenu={() => setIsSortOpen(true)}
         onGeneratePdf={handleStartPdfGeneration}
         isGenerating={generator.isGenerating}
+        // Merge Mode
+        pdfFileCount={merger.totalFiles}
+        pdfTotalPages={merger.totalPages}
+        pdfTotalSize={merger.formattedTotalSize}
+        onClearAllPdfs={handleClearAllPdfsConfirm}
+        onMergePdfs={handleStartPdfMerge}
+        isMerging={merger.isMerging}
       />
 
-      {/* Main Workspace (Split: Left = Grid/Dropzone, Right = Settings) */}
+      {/* Main Workspace */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left / Center Area */}
-        <main className="flex-1 flex flex-col overflow-hidden bg-zinc-950">
-          <DropZone
-            onFilesSelected={collection.addImages}
-            onFolderSelected={collection.addImages}
-            hasImages={collection.totalCount > 0}
-          />
+        {activeMode === 'images' ? (
+          <>
+            {/* Images to PDF Mode */}
+            <main className="flex-1 flex flex-col overflow-hidden bg-zinc-950">
+              <DropZone
+                onFilesSelected={collection.addImages}
+                onFolderSelected={collection.addImages}
+                hasImages={collection.totalCount > 0}
+              />
 
-          {collection.totalCount > 0 && (
-            <ImageGrid
-              images={collection.images}
-              selectedIds={collection.selectedIds}
-              onSelect={collection.toggleSelect}
-              onRemove={collection.removeImage}
-              onMoveItem={collection.moveItem}
-              onMoveOffset={collection.moveItemOffset}
-              onMoveToFirst={collection.moveToFirst}
-              onMoveToLast={collection.moveToLast}
-              onOpenPreview={handleOpenPreview}
+              {collection.totalCount > 0 && (
+                <ImageGrid
+                  images={collection.images}
+                  selectedIds={collection.selectedIds}
+                  onSelect={collection.toggleSelect}
+                  onRemove={collection.removeImage}
+                  onMoveItem={collection.moveItem}
+                  onMoveOffset={collection.moveItemOffset}
+                  onMoveToFirst={collection.moveToFirst}
+                  onMoveToLast={collection.moveToLast}
+                  onOpenPreview={handleOpenPreview}
+                />
+              )}
+            </main>
+
+            <SettingsPanel
+              settings={settings}
+              onUpdateSettings={setSettings}
             />
-          )}
-        </main>
+          </>
+        ) : (
+          <>
+            {/* Merge PDFs Mode */}
+            <main className="flex-1 flex flex-col overflow-hidden bg-zinc-950">
+              <PdfMergeView
+                pdfFiles={merger.pdfFiles}
+                onAddPdfs={merger.addPdfs}
+                onRemovePdf={merger.removePdf}
+                onMovePdf={merger.movePdf}
+                onMoveOffset={merger.movePdfOffset}
+                onMoveToFirst={merger.movePdfToFirst}
+                onMoveToLast={merger.movePdfToLast}
+                totalPages={merger.totalPages}
+                totalSize={merger.formattedTotalSize}
+              />
+            </main>
 
-        {/* Right Settings Sidebar */}
-        <SettingsPanel
-          settings={settings}
-          onUpdateSettings={setSettings}
-        />
+            <MergeSettingsPanel
+              settings={mergeSettings}
+              onUpdateSettings={setMergeSettings}
+              totalFiles={merger.totalFiles}
+              totalPages={merger.totalPages}
+              totalSize={merger.formattedTotalSize}
+            />
+          </>
+        )}
       </div>
 
-      {/* Big Image Preview Lightbox Modal (New Feature) */}
+      {/* Big Image Preview Lightbox Modal */}
       <ImagePreviewModal
         isOpen={previewState.isOpen && !!currentPreviewImage}
         image={currentPreviewImage}
@@ -238,15 +337,16 @@ export default function App() {
         onMoveOffset={collection.moveItemOffset}
       />
 
-      {/* Conversion Progress / Result / Error Modal */}
+      {/* Progress / Result / Error Modal */}
       <ProgressModal
-        isOpen={generator.isGenerating || !!generator.result || !!generator.error}
-        isGenerating={generator.isGenerating}
-        progress={generator.progress}
-        result={generator.result}
-        error={generator.error}
-        onCancel={generator.cancel}
-        onClose={generator.resetState}
+        isOpen={isOperating || !!currentResult || !!currentError}
+        isGenerating={isOperating}
+        progress={currentProgress}
+        result={currentResult}
+        error={currentError}
+        mode={activeMode}
+        onCancel={activeMode === 'merge' ? merger.cancel : generator.cancel}
+        onClose={activeMode === 'merge' ? merger.resetMergeState : generator.resetState}
         onRevealFolder={generator.revealResult}
         onOpenFile={generator.openPdf}
       />
@@ -268,7 +368,7 @@ export default function App() {
         cancelLabel={confirmModal.cancelLabel}
         isDestructive={confirmModal.isDestructive}
         onConfirm={confirmModal.onConfirm}
-        onCancel={confirmModal.onCancel}
+        onCancel={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
       />
     </div>
   );

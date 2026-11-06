@@ -1,6 +1,6 @@
 # Picnito PDF
 
-> Offline Windows Desktop Image to PDF Application built with Electron, React (JavaScript), Vite, Sharp, and PDFKit.
+> Offline Windows Desktop Image-to-PDF & PDF Merger Application built with Electron, React (JavaScript), Vite, Sharp, PDFKit, and pdf-lib.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-emerald.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows-blue.svg)]()
@@ -10,11 +10,24 @@
 
 ## 🌟 Overview
 
-**Picnito PDF** is an offline-first Windows desktop application that allows users to combine multiple images into a single PDF document while maintaining complete, reliable control over:
-- **Image sequence**: Drag-and-drop reordering, natural alphanumeric sorting (`page-1`, `page-2`, `page-10`), and numbered badges corresponding to exact PDF page numbers.
-- **Large-Batch Processing**: Designed to handle hundreds of images (165+ scans, 300–600 MB+) sequentially without RAM saturation or crashes.
-- **Paper sizes & Layout**: Standard international (A0–A6, B4–B5) and North American (Letter, Legal, Tabloid, Executive) paper sizes, custom dimensions, orientations (Portrait, Landscape, Auto), placements (Fit, Fill, Stretch), margins, and backgrounds.
-- **Zero Cloud / 100% Offline**: Runs strictly on your local machine with context isolation and zero data transmission.
+**Picnito PDF** is an offline-first Windows desktop application that gives you complete control over your PDF creation and document management workflows:
+
+1. **Images to PDF**:
+   - Combine hundreds of scanned textbook pages, notes, or photos (165+ scans / 300–600 MB+) without memory exhaustion.
+   - **Precision Sequence Manager**: Drag-and-drop reordering, sequence badges matching final PDF page numbers, natural alphanumeric sorting (`page-1`, `page-2`, `page-10`), and undo/redo history.
+   - **High-Resolution Preview Lightbox**: Double-click or click inspect to view pages in full detail with zoom and keyboard navigation.
+   - **Page Customization**: Standard ISO paper sizes (A0–A6, B4–B5), North American (Letter, Legal, Tabloid), custom dimensions, orientation (Portrait, Landscape, Auto), placement modes (Fit, Fill, Stretch), margins, and backgrounds.
+
+2. **Merge PDFs into One (New)**:
+   - Combine 2 or more PDF documents into a single sequential PDF.
+   - Reorder PDF documents with drag-and-drop or position buttons (#1, #2, etc.).
+   - Displays real-time page count per file, combined total pages, and file sizes.
+   - 100% offline using `pdf-lib`.
+
+3. **Output Destination Controls**:
+   - Save directly to your preferred folder with **[Browse]** and one-click quick shortcuts (**Desktop**, **Documents**, **Downloads**).
+   - Checkbox mark option: `[✓] Always ask where to save each time` (Windows Save Dialog).
+   - Editable default output filename with overwrite protection.
 
 ---
 
@@ -41,12 +54,6 @@ Run Vite dev server and Electron desktop app concurrently:
 npm run electron:dev
 ```
 
-Or run frontend separately:
-
-```bash
-npm run dev
-```
-
 ### Production Build & Packaging
 
 Build frontend:
@@ -61,33 +68,13 @@ npm run package
 
 ---
 
-## 🏗️ Project Architecture
-
-```
-Picnito PDF/
-├── electron/
-│   ├── main.js         # Electron lifecycle, custom protocols, IPC dialogs & window management
-│   ├── preload.js      # ContextBridge exposing secure IPC APIs to renderer
-│   └── pdfService.js   # Low-RAM streaming PDF generation (Sharp + PDFKit)
-├── src/
-│   ├── components/     # React UI components (ImageGrid, ImageCard, SettingsPanel, Modals, etc.)
-│   ├── hooks/          # React hooks (useImageCollection, usePdfGenerator)
-│   ├── utils/          # Paper sizes, natural sort, and formatting utilities
-│   ├── App.jsx         # Main application layout and keyboard shortcut orchestration
-│   ├── main.jsx        # React DOM entry point
-│   └── index.css       # Tailwind CSS & custom desktop scrollbars
-├── index.html
-├── package.json
-├── tailwind.config.js
-└── vite.config.js
-```
-
----
-
 ## ⌨️ Keyboard Shortcuts
 
+- `Space` / `Enter` — Open big preview lightbox for selected image
+- `←` / `→` — Navigate through pages in preview lightbox
+- `+` / `-` / `0` — Zoom in / out / reset in preview lightbox
 - `Ctrl + A` — Select all images
-- `Esc` — Clear selection
+- `Esc` — Clear selection / close lightbox
 - `Delete` / `Backspace` — Remove selected images
 - `Ctrl + Z` — Undo sequence change
 - `Ctrl + Y` / `Ctrl + Shift + Z` — Redo sequence change
