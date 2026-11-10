@@ -17,21 +17,29 @@ import {
 import {
   PAPER_SIZES,
   MARGIN_PRESETS,
-  getPageDimensions,
-  convertToPoints
+  getPageDimensions
 } from '../utils/paperSizes';
+import { PdfPaper } from './PdfPaper';
 
 export function PdfLayoutPreviewModal({
   isOpen,
   images,
+  initialIndex = 0,
   settings,
   onUpdateSettings,
   onClose,
   onGeneratePdf,
 }) {
-  const [currentPageIndex, setCurrentPageIndex] = useState(0);
+  const [currentPageIndex, setCurrentPageIndex] = useState(initialIndex);
   const [showGuidelines, setShowGuidelines] = useState(true);
   const [showControls, setShowControls] = useState(true);
+
+  // Sync initialIndex whenever modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setCurrentPageIndex(Math.max(0, Math.min(initialIndex, images.length - 1)));
+    }
+  }, [isOpen, initialIndex, images.length]);
 
   // Keep index in bounds if collection changes
   useEffect(() => {
@@ -67,30 +75,13 @@ export function PdfLayoutPreviewModal({
 
   const currentImage = images[currentPageIndex] || images[0];
 
-  // Calculate paper dimensions based on current image and active settings
-  const { widthPt, heightPt, effectiveOrientation } = getPageDimensions({
+  const { effectiveOrientation } = getPageDimensions({
     paperSize: settings.paperSize,
     customDimensions: settings.customDimensions,
     orientation: settings.orientation,
-    imgWidth: currentImage.width || 800,
-    imgHeight: currentImage.height || 600,
+    imgWidth: currentImage?.width || 800,
+    imgHeight: currentImage?.height || 600,
   });
-
-  const aspectRatio = widthPt / heightPt;
-
-  // Margin percentages
-  const mTopPct = (settings.margins.top / heightPt) * 100;
-  const mBottomPct = (settings.margins.bottom / heightPt) * 100;
-  const mLeftPct = (settings.margins.left / widthPt) * 100;
-  const mRightPct = (settings.margins.right / widthPt) * 100;
-
-  // Image source
-  const imageSrc =
-    currentImage.fullMediaUrl ||
-    currentImage.previewUrl ||
-    (currentImage.path
-      ? `picnito-media://media/?path=${encodeURIComponent(currentImage.path)}`
-      : currentImage.thumbnailUrl);
 
   const handleSettingChange = (key, value) => {
     onUpdateSettings({ ...settings, [key]: value });
@@ -111,11 +102,6 @@ export function PdfLayoutPreviewModal({
     });
   };
 
-  // Object-fit property based on placement
-  let objectFitClass = 'object-contain';
-  if (settings.placement === 'fill') objectFitClass = 'object-cover';
-  if (settings.placement === 'stretch') objectFitClass = 'object-fill';
-
   const paperSizeName =
     settings.paperSize === 'custom'
       ? `Custom (${settings.customDimensions?.width || 0}×${settings.customDimensions?.height || 0} ${settings.customDimensions?.unit || 'mm'})`
@@ -126,7 +112,7 @@ export function PdfLayoutPreviewModal({
   return (
     <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex flex-col select-none animate-in fade-in duration-200">
       {/* Top Header Bar */}
-      <header className="h-16 px-6 bg-zinc-950/80 border-b border-zinc-800 flex items-center justify-between z-30 shrink-0">
+      <header className="h-16 px-6 bg-zinc-950/90 border-b border-zinc-800 flex items-center justify-between z-30 shrink-0">
         {/* Left: Sequence & Filename */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-[#0cb1d6] to-[#a356f6] rounded-xl shadow-md shadow-[#6266f0]/20 text-white font-bold text-xs">
@@ -155,8 +141,8 @@ export function PdfLayoutPreviewModal({
             </button>
           </div>
 
-          <span className="text-xs text-zinc-300 font-medium truncate max-w-xs" title={currentImage.name}>
-            {currentImage.name}
+          <span className="text-xs text-zinc-300 font-medium truncate max-w-xs" title={currentImage?.name}>
+            {currentImage?.name}
           </span>
         </div>
 
@@ -210,64 +196,44 @@ export function PdfLayoutPreviewModal({
 
       {/* Main Preview Area */}
       <div className="flex-1 flex overflow-hidden relative">
-        {/* The Virtual Canvas Display */}
+        {/* Virtual Canvas Display Area */}
         <div className="flex-1 flex items-center justify-center p-6 overflow-hidden relative bg-zinc-950/70">
           {/* Navigation Chevron Left */}
           <button
             onClick={() => setCurrentPageIndex((prev) => Math.max(0, prev - 1))}
             disabled={currentPageIndex === 0}
             className="absolute left-6 z-20 p-3 rounded-2xl bg-zinc-900/80 hover:bg-zinc-800 text-zinc-200 hover:text-white border border-zinc-700/60 backdrop-blur shadow-2xl disabled:opacity-20 disabled:pointer-events-none transition"
+            title="Previous Page (←)"
           >
             <ChevronLeft className="w-6 h-6" />
           </button>
 
           {/* Virtual Sheet of Paper Container */}
-          <div
-            className="relative transition-all duration-300 shadow-[0_20px_50px_rgba(0,0,0,0.9)] border border-zinc-800/80 flex items-center justify-center overflow-hidden"
-            style={{
-              aspectRatio: `${aspectRatio}`,
-              maxHeight: showControls ? '68vh' : '76vh',
-              maxWidth: '75vw',
-              backgroundColor: settings.backgroundColor || '#ffffff',
-            }}
-          >
-            {/* Printable Bounds inside Margins */}
-            <div
-              className={`absolute overflow-hidden transition-all duration-200 ${
-                showGuidelines ? 'border border-dashed border-[#6266f0]/60' : ''
-              }`}
-              style={{
-                top: `${mTopPct}%`,
-                bottom: `${mBottomPct}%`,
-                left: `${mLeftPct}%`,
-                right: `${mRightPct}%`,
-              }}
-            >
-              <img
-                src={imageSrc}
-                alt={currentImage.name}
-                className={`w-full h-full ${objectFitClass} select-none transition-all duration-200`}
-                draggable={false}
-              />
-            </div>
-          </div>
+          <PdfPaper
+            image={currentImage}
+            pageIndex={currentPageIndex}
+            totalPages={images.length}
+            settings={settings}
+            showGuidelines={showGuidelines}
+          />
 
           {/* Navigation Chevron Right */}
           <button
             onClick={() => setCurrentPageIndex((prev) => Math.min(images.length - 1, prev + 1))}
             disabled={currentPageIndex === images.length - 1}
             className="absolute right-6 z-20 p-3 rounded-2xl bg-zinc-900/80 hover:bg-zinc-800 text-zinc-200 hover:text-white border border-zinc-700/60 backdrop-blur shadow-2xl disabled:opacity-20 disabled:pointer-events-none transition"
+            title="Next Page (→)"
           >
             <ChevronRight className="w-6 h-6" />
           </button>
 
           {/* Status Badge Over Sheet */}
-          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-zinc-900/90 border border-zinc-800 px-4 py-1.5 rounded-full text-xs text-zinc-300 backdrop-blur flex items-center gap-3 font-mono shadow-xl">
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-zinc-900/90 border border-zinc-800 px-4 py-1.5 rounded-full text-xs text-zinc-300 backdrop-blur flex items-center gap-3 font-mono shadow-xl z-20">
             <span className="text-[#0cb1d6] font-semibold">{paperSizeName}</span>
             <span>•</span>
             <span className="capitalize">{effectiveOrientation}</span>
             <span>•</span>
-            <span>{settings.placement.toUpperCase()}</span>
+            <span className="uppercase text-[#a356f6] font-semibold">{settings.placement}</span>
             <span>•</span>
             <span>
               Margins: {settings.marginPreset === 'none' ? '0 pt' : `${settings.margins.top} pt`}
@@ -412,6 +378,7 @@ export function PdfLayoutPreviewModal({
                   value={settings.backgroundColor || '#ffffff'}
                   onChange={(e) => handleSettingChange('backgroundColor', e.target.value)}
                   className="w-8 h-8 rounded bg-transparent border-0 cursor-pointer"
+                  title="Choose custom background color"
                 />
               </div>
             </div>
@@ -441,6 +408,7 @@ export function PdfLayoutPreviewModal({
                     ? 'border-[#6266f0] ring-2 ring-[#6266f0]/50 scale-105 shadow-md shadow-[#6266f0]/20'
                     : 'border-zinc-800 opacity-60 hover:opacity-100 hover:border-zinc-600'
                 }`}
+                title={`Page ${idx + 1}: ${img.name}`}
               >
                 {thumbSrc ? (
                   <img src={thumbSrc} alt={img.name} className="w-full h-full object-cover" />

@@ -7,6 +7,7 @@ import {
   X,
   Check,
   Maximize2,
+  Eye,
   Image as ImageIcon
 } from 'lucide-react';
 import { formatFileSize, formatDimensions } from '../utils/formatters';
@@ -27,6 +28,7 @@ export function ImageCard({
   onDragEnd,
   isDragging,
   onOpenPreview,
+  onOpenPagePreview,
 }) {
   const [imageError, setImageError] = useState(false);
 
@@ -39,6 +41,18 @@ export function ImageCard({
     image.previewUrl ||
     (image.path ? `picnito-media://media/?path=${encodeURIComponent(image.path)}` : null);
 
+  const fallbackSrc = image.thumbnailUrl || image.previewUrl;
+
+  const handleOpenPage = (e) => {
+    e?.stopPropagation();
+    onSelect(image.id, index, e || {});
+    if (onOpenPagePreview) {
+      onOpenPagePreview(index);
+    } else if (onOpenPreview) {
+      onOpenPreview(index);
+    }
+  };
+
   return (
     <div
       draggable
@@ -47,20 +61,17 @@ export function ImageCard({
       onDrop={(e) => onDrop(e, index)}
       onDragEnd={onDragEnd}
       onClick={(e) => onSelect(image.id, index, e)}
-      onDoubleClick={(e) => {
-        e.stopPropagation();
-        onOpenPreview(index);
-      }}
+      onDoubleClick={handleOpenPage}
       className={`group relative flex flex-col rounded-xl overflow-hidden border transition-all duration-150 select-none cursor-grab active:cursor-grabbing bg-zinc-900/80 ${
         isSelected
           ? 'border-[#6266f0] ring-2 ring-[#6266f0]/40 shadow-lg shadow-[#6266f0]/15'
           : 'border-zinc-800 hover:border-zinc-700 hover:shadow-md'
       } ${isDragging ? 'opacity-30 scale-95' : 'opacity-100'}`}
     >
-      {/* Sequence Badge (Top Left) — Core requirement from PRD */}
+      {/* Sequence Badge (Top Left) */}
       <div className="absolute top-2.5 left-2.5 z-10 flex items-center gap-1.5">
         <div
-          title={`Page ${index + 1} in generated PDF (Double-click card to preview full size)`}
+          title={`Page ${index + 1} in generated PDF`}
           className={`flex items-center justify-center font-bold text-xs px-2 py-0.5 rounded-md shadow-md backdrop-blur transition ${
             isSelected
               ? 'bg-gradient-to-r from-[#0cb1d6] to-[#a356f6] text-white font-extrabold shadow-md shadow-[#6266f0]/30'
@@ -71,56 +82,82 @@ export function ImageCard({
         </div>
       </div>
 
-      {/* Action Buttons (Top Right): Maximize/Inspect, Select, Remove */}
+      {/* Action Buttons (Top Right): Page Preview, Inspect, Select, Remove */}
       <div className="absolute top-2.5 right-2.5 z-10 flex items-center gap-1">
-        {/* Fullsize Preview / Inspect Button */}
+        {/* PDF Page Layout Preview Button */}
+        <button
+          onClick={handleOpenPage}
+          title="Preview on PDF page"
+          className="w-6 h-6 rounded-md bg-zinc-950/80 border border-zinc-700/80 text-zinc-300 hover:text-[#0cb1d6] hover:bg-zinc-900 opacity-0 group-hover:opacity-100 transition flex items-center justify-center backdrop-blur shadow-sm"
+        >
+          <Eye className="w-3.5 h-3.5" />
+        </button>
+
+        {/* Fullsize Zoom / Lightbox Button */}
         <button
           onClick={(e) => {
             e.stopPropagation();
             onOpenPreview(index);
           }}
-          title="Open large preview (Double-click)"
-          className="w-6 h-6 rounded-md bg-zinc-950/70 border border-zinc-700/80 text-zinc-400 hover:text-[#0cb1d6] hover:bg-zinc-950 opacity-0 group-hover:opacity-100 transition flex items-center justify-center backdrop-blur"
+          title="Zoom & inspect full image"
+          className="w-6 h-6 rounded-md bg-zinc-950/80 border border-zinc-700/80 text-zinc-400 hover:text-white hover:bg-zinc-900 opacity-0 group-hover:opacity-100 transition flex items-center justify-center backdrop-blur shadow-sm"
         >
           <Maximize2 className="w-3.5 h-3.5" />
         </button>
 
-        {/* Checkbox */}
+        {/* Checkbox for Multi-Selection */}
         <button
           onClick={(e) => {
             e.stopPropagation();
             onSelect(image.id, index, { ctrlKey: true });
           }}
+          title="Select image"
           className={`w-6 h-6 rounded-md flex items-center justify-center transition backdrop-blur ${
             isSelected
               ? 'bg-gradient-to-r from-[#0cb1d6] to-[#6266f0] text-white'
-              : 'bg-zinc-950/70 border border-zinc-700/80 text-zinc-400 opacity-0 group-hover:opacity-100 hover:text-white'
+              : 'bg-zinc-950/80 border border-zinc-700/80 text-zinc-400 opacity-0 group-hover:opacity-100 hover:text-white'
           }`}
         >
           <Check className="w-3.5 h-3.5 stroke-[3]" />
         </button>
 
-        {/* Remove */}
+        {/* Remove Button */}
         <button
           onClick={(e) => {
             e.stopPropagation();
             onRemove(image.id);
           }}
           title="Remove from PDF"
-          className="w-6 h-6 rounded-md bg-zinc-950/70 border border-zinc-700/80 text-zinc-400 hover:text-rose-400 hover:bg-zinc-950 opacity-0 group-hover:opacity-100 transition flex items-center justify-center backdrop-blur"
+          className="w-6 h-6 rounded-md bg-zinc-950/80 border border-zinc-700/80 text-zinc-400 hover:text-rose-400 hover:bg-zinc-900 opacity-0 group-hover:opacity-100 transition flex items-center justify-center backdrop-blur shadow-sm"
         >
           <X className="w-3.5 h-3.5" />
         </button>
       </div>
 
-      {/* Thumbnail Container */}
-      <div className="relative aspect-[4/3] bg-zinc-950 flex items-center justify-center overflow-hidden">
+      {/* Thumbnail Container — Clicking this opens PDF page preview directly! */}
+      <div
+        onClick={(e) => {
+          if (e.ctrlKey || e.metaKey || e.shiftKey) {
+            onSelect(image.id, index, e);
+            return;
+          }
+          handleOpenPage(e);
+        }}
+        className="relative aspect-[4/3] bg-zinc-950 flex items-center justify-center overflow-hidden cursor-pointer group/thumb"
+        title="Click to preview on PDF page"
+      >
         {imgSrc && !imageError ? (
           <img
             src={imgSrc}
             alt={image.name}
-            onError={() => setImageError(true)}
-            className="w-full h-full object-contain pointer-events-none transition-transform duration-200 group-hover:scale-105"
+            onError={(e) => {
+              if (fallbackSrc && e.target.src !== fallbackSrc) {
+                e.target.src = fallbackSrc;
+              } else {
+                setImageError(true);
+              }
+            }}
+            className="w-full h-full object-contain pointer-events-none transition-transform duration-200 group-hover/thumb:scale-105"
             loading="lazy"
           />
         ) : (
@@ -130,8 +167,16 @@ export function ImageCard({
           </div>
         )}
 
+        {/* Hover Hint Overlay to tell user clicking opens big preview */}
+        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+          <div className="px-3 py-1 rounded-full bg-zinc-900/95 border border-zinc-700/80 text-white text-[11px] font-medium flex items-center gap-1.5 shadow-xl backdrop-blur transform group-hover/thumb:scale-105 transition-transform">
+            <Eye className="w-3 h-3 text-[#0cb1d6]" />
+            <span>Click to preview page</span>
+          </div>
+        </div>
+
         {/* Quick Position Controls on hover */}
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-zinc-950/90 via-zinc-950/60 to-transparent p-2 pt-6 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-between">
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-zinc-950/95 via-zinc-950/70 to-transparent p-2 pt-6 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-between z-10">
           <div className="flex items-center gap-1">
             <button
               onClick={(e) => {

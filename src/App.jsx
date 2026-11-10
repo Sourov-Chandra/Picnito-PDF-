@@ -3,6 +3,7 @@ import { Header } from './components/Header';
 import { DropZone } from './components/DropZone';
 import { ImageGrid } from './components/ImageGrid';
 import { SettingsPanel } from './components/SettingsPanel';
+import { PdfWorkspacePreview } from './components/PdfWorkspacePreview';
 import { PdfMergeView } from './components/PdfMergeView';
 import { MergeSettingsPanel } from './components/MergeSettingsPanel';
 import { ProgressModal } from './components/ProgressModal';
@@ -16,6 +17,8 @@ import { usePdfMerger } from './hooks/usePdfMerger';
 
 export default function App() {
   const [activeMode, setActiveMode] = useState('images'); // 'images' | 'merge'
+  const [workspaceView, setWorkspaceView] = useState('grid'); // 'grid' | 'preview'
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   // Image to PDF State & Hooks
   const collection = useImageCollection();
@@ -69,11 +72,25 @@ export default function App() {
     onCancel: () => {},
   });
 
+  // If all images removed, revert workspace view to grid
+  useEffect(() => {
+    if (collection.totalCount === 0 && workspaceView === 'preview') {
+      setWorkspaceView('grid');
+    }
+  }, [collection.totalCount, workspaceView]);
+
+  // Keep activeImageIndex in bounds
+  useEffect(() => {
+    if (collection.totalCount > 0 && activeImageIndex >= collection.totalCount) {
+      setActiveImageIndex(collection.totalCount - 1);
+    }
+  }, [collection.totalCount, activeImageIndex]);
+
   // Global Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
-      if (previewState.isOpen) return;
+      if (previewState.isOpen || isLayoutPreviewOpen) return;
 
       if (activeMode === 'images') {
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
@@ -100,7 +117,8 @@ export default function App() {
             const foundIdx = collection.images.findIndex((img) => img.id === firstSelectedId);
             if (foundIdx !== -1) {
               e.preventDefault();
-              setPreviewState({ isOpen: true, index: foundIdx });
+              setActiveImageIndex(foundIdx);
+              setWorkspaceView('preview');
             }
           }
         }
@@ -109,35 +127,60 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [collection, previewState.isOpen, activeMode]);
+  }, [collection, previewState.isOpen, isLayoutPreviewOpen, activeMode]);
 
-  // Preview Handlers
-  const handleOpenPreview = (index) => {
+  // Page preview triggers
+  const handleOpenPagePreview = (index) => {
+    setActiveImageIndex(index);
+    setWorkspaceView('preview');
+  };
+
+  const handleToggleLayoutPreview = () => {
+    if (collection.totalCount === 0) return;
+
+    // If an image is selected, start preview on that image
+    if (collection.selectedIds.size > 0) {
+      const firstSelectedId = Array.from(collection.selectedIds)[0];
+      const foundIdx = collection.images.findIndex((img) => img.id === firstSelectedId);
+      if (foundIdx !== -1) {
+        setActiveImageIndex(foundIdx);
+      }
+    }
+
+    if (workspaceView === 'grid') {
+      setWorkspaceView('preview');
+    } else {
+      setIsLayoutPreviewOpen(true);
+    }
+  };
+
+  // Lightbox Zoom Handlers
+  const handleOpenLightbox = (index) => {
     setPreviewState({ isOpen: true, index });
   };
 
-  const handleClosePreview = () => {
+  const handleCloseLightbox = () => {
     setPreviewState((prev) => ({ ...prev, isOpen: false }));
   };
 
-  const handleNextPreview = () => {
+  const handleNextLightbox = () => {
     setPreviewState((prev) => ({
       ...prev,
       index: Math.min(collection.images.length - 1, prev.index + 1),
     }));
   };
 
-  const handlePrevPreview = () => {
+  const handlePrevLightbox = () => {
     setPreviewState((prev) => ({
       ...prev,
       index: Math.max(0, prev.index - 1),
     }));
   };
 
-  const handleRemoveFromPreview = (id) => {
+  const handleRemoveFromLightbox = (id) => {
     collection.removeImage(id);
     if (collection.images.length <= 1) {
-      handleClosePreview();
+      handleCloseLightbox();
     } else if (previewState.index >= collection.images.length - 1) {
       setPreviewState((prev) => ({ ...prev, index: Math.max(0, prev.index - 1) }));
     }
@@ -155,7 +198,7 @@ export default function App() {
       onConfirm: () => {
         collection.clearAll();
         setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-        handleClosePreview();
+        handleCloseLightbox();
       },
       onCancel: () => {
         setConfirmModal((prev) => ({ ...prev, isOpen: false }));
@@ -237,7 +280,7 @@ export default function App() {
   const currentProgress = activeMode === 'merge' ? merger.mergeProgress : generator.progress;
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-zinc-950 text-zinc-100 overflow-hidden font-sans">
+    <div className="h-screen w-screen flex flex-col bg-zinc-950 text-zinc-100 overflow-hidden font-sans select-none">
       {/* Top Header */}
       <Header
         activeMode={activeMode}
@@ -246,6 +289,8 @@ export default function App() {
         imageCount={collection.totalCount}
         totalSize={collection.formattedTotalSize}
         selectedCount={collection.selectedIds.size}
+        workspaceView={workspaceView}
+        onChangeWorkspaceView={setWorkspaceView}
         canUndo={collection.canUndo}
         canRedo={collection.canRedo}
         onUndo={collection.undo}
@@ -255,7 +300,7 @@ export default function App() {
         onClearSelection={collection.clearSelection}
         onRemoveSelected={collection.removeSelected}
         onOpenSortMenu={() => setIsSortOpen(true)}
-        onOpenLayoutPreview={() => setIsLayoutPreviewOpen(true)}
+        onOpenLayoutPreview={handleToggleLayoutPreview}
         onGeneratePdf={handleStartPdfGeneration}
         isGenerating={generator.isGenerating}
         // Merge Mode
@@ -273,31 +318,57 @@ export default function App() {
           <>
             {/* Images to PDF Mode */}
             <main className="flex-1 flex flex-col overflow-hidden bg-zinc-950">
-              <DropZone
-                onFilesSelected={collection.addImages}
-                onFolderSelected={collection.addImages}
-                hasImages={collection.totalCount > 0}
-              />
-
-              {collection.totalCount > 0 && (
-                <ImageGrid
-                  images={collection.images}
-                  selectedIds={collection.selectedIds}
-                  onSelect={collection.toggleSelect}
-                  onRemove={collection.removeImage}
-                  onMoveItem={collection.moveItem}
-                  onMoveOffset={collection.moveItemOffset}
-                  onMoveToFirst={collection.moveToFirst}
-                  onMoveToLast={collection.moveToLast}
-                  onOpenPreview={handleOpenPreview}
+              {collection.totalCount === 0 ? (
+                <DropZone
+                  onFilesSelected={collection.addImages}
+                  onFolderSelected={collection.addImages}
+                  hasImages={false}
                 />
+              ) : workspaceView === 'preview' ? (
+                /* Interactive Live PDF Workspace Preview */
+                <PdfWorkspacePreview
+                  images={collection.images}
+                  settings={settings}
+                  activeIndex={activeImageIndex}
+                  onChangeActiveIndex={setActiveImageIndex}
+                  onSwitchToGrid={() => setWorkspaceView('grid')}
+                  onOpenFullscreenPreview={() => setIsLayoutPreviewOpen(true)}
+                  onGeneratePdf={handleStartPdfGeneration}
+                  isGenerating={generator.isGenerating}
+                />
+              ) : (
+                /* Grid of Images */
+                <>
+                  <DropZone
+                    onFilesSelected={collection.addImages}
+                    onFolderSelected={collection.addImages}
+                    hasImages={true}
+                  />
+
+                  <ImageGrid
+                    images={collection.images}
+                    selectedIds={collection.selectedIds}
+                    onSelect={(id, idx, e) => {
+                      collection.toggleSelect(id, idx, e);
+                      setActiveImageIndex(idx);
+                    }}
+                    onRemove={collection.removeImage}
+                    onMoveItem={collection.moveItem}
+                    onMoveOffset={collection.moveItemOffset}
+                    onMoveToFirst={collection.moveToFirst}
+                    onMoveToLast={collection.moveToLast}
+                    onOpenPreview={handleOpenLightbox}
+                    onOpenPagePreview={handleOpenPagePreview}
+                  />
+                </>
               )}
             </main>
 
+            {/* Right Settings Panel (Always accessible & updates preview live) */}
             <SettingsPanel
               settings={settings}
               onUpdateSettings={setSettings}
-              onOpenLayoutPreview={() => setIsLayoutPreviewOpen(true)}
+              onOpenLayoutPreview={handleToggleLayoutPreview}
               hasImages={collection.totalCount > 0}
             />
           </>
@@ -335,17 +406,18 @@ export default function App() {
         image={currentPreviewImage}
         currentIndex={previewState.index}
         totalImages={collection.images.length}
-        onClose={handleClosePreview}
-        onNext={handleNextPreview}
-        onPrev={handlePrevPreview}
-        onRemove={handleRemoveFromPreview}
+        onClose={handleCloseLightbox}
+        onNext={handleNextLightbox}
+        onPrev={handlePrevLightbox}
+        onRemove={handleRemoveFromLightbox}
         onMoveOffset={collection.moveItemOffset}
       />
 
-      {/* PDF Page Layout Live Preview Modal (New Feature) */}
+      {/* PDF Page Layout Fullscreen Modal */}
       <PdfLayoutPreviewModal
         isOpen={isLayoutPreviewOpen}
         images={collection.images}
+        initialIndex={activeImageIndex}
         settings={settings}
         onUpdateSettings={setSettings}
         onClose={() => setIsLayoutPreviewOpen(false)}

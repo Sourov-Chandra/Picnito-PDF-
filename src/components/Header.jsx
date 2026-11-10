@@ -9,7 +9,8 @@ import {
   Image as ImageIcon,
   Layers,
   Merge,
-  Eye
+  Eye,
+  LayoutGrid
 } from 'lucide-react';
 
 export function Header({
@@ -19,6 +20,8 @@ export function Header({
   imageCount,
   totalSize,
   selectedCount,
+  workspaceView = 'grid',
+  onChangeWorkspaceView,
   canUndo,
   canRedo,
   onUndo,
@@ -40,7 +43,7 @@ export function Header({
   isMerging,
 }) {
   return (
-    <header className="h-16 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur px-6 flex items-center justify-between z-20 shrink-0">
+    <header className="h-16 border-b border-zinc-800 bg-zinc-950/80 backdrop-blur px-6 flex items-center justify-between z-20 shrink-0 select-none">
       {/* Brand / Logo */}
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-[#0cb1d6] via-[#6266f0] to-[#a356f6] flex items-center justify-center shadow-lg shadow-[#6266f0]/30 text-white font-bold transition transform hover:scale-105">
@@ -117,6 +120,36 @@ export function Header({
                     </div>
                   </>
                 )}
+              </div>
+            )}
+
+            {/* Grid vs Page Preview Toggle in Header */}
+            {imageCount > 0 && onChangeWorkspaceView && (
+              <div className="flex items-center bg-zinc-900 border border-zinc-800 rounded-lg p-0.5">
+                <button
+                  onClick={() => onChangeWorkspaceView('grid')}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition ${
+                    workspaceView === 'grid'
+                      ? 'bg-zinc-800 text-white font-semibold'
+                      : 'text-zinc-400 hover:text-zinc-200'
+                  }`}
+                  title="Grid view of images"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <span>Grid</span>
+                </button>
+                <button
+                  onClick={() => onChangeWorkspaceView('preview')}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition ${
+                    workspaceView === 'preview'
+                      ? 'bg-gradient-to-r from-[#0cb1d6] to-[#6266f0] text-white font-semibold shadow-sm'
+                      : 'text-zinc-400 hover:text-zinc-200'
+                  }`}
+                  title="Live PDF page layout preview"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>Page Preview</span>
+                </button>
               </div>
             )}
 
