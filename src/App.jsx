@@ -9,6 +9,7 @@ import { ProgressModal } from './components/ProgressModal';
 import { SortModal } from './components/SortModal';
 import { ConfirmModal } from './components/ConfirmModal';
 import { ImagePreviewModal } from './components/ImagePreviewModal';
+import { PdfLayoutPreviewModal } from './components/PdfLayoutPreviewModal';
 import { useImageCollection } from './hooks/useImageCollection';
 import { usePdfGenerator } from './hooks/usePdfGenerator';
 import { usePdfMerger } from './hooks/usePdfMerger';
@@ -51,6 +52,7 @@ export default function App() {
 
   // Modals state
   const [isSortOpen, setIsSortOpen] = useState(false);
+  const [isLayoutPreviewOpen, setIsLayoutPreviewOpen] = useState(false);
   const [previewState, setPreviewState] = useState({
     isOpen: false,
     index: 0,
@@ -253,6 +255,7 @@ export default function App() {
         onClearSelection={collection.clearSelection}
         onRemoveSelected={collection.removeSelected}
         onOpenSortMenu={() => setIsSortOpen(true)}
+        onOpenLayoutPreview={() => setIsLayoutPreviewOpen(true)}
         onGeneratePdf={handleStartPdfGeneration}
         isGenerating={generator.isGenerating}
         // Merge Mode
@@ -294,6 +297,8 @@ export default function App() {
             <SettingsPanel
               settings={settings}
               onUpdateSettings={setSettings}
+              onOpenLayoutPreview={() => setIsLayoutPreviewOpen(true)}
+              hasImages={collection.totalCount > 0}
             />
           </>
         ) : (
@@ -335,6 +340,16 @@ export default function App() {
         onPrev={handlePrevPreview}
         onRemove={handleRemoveFromPreview}
         onMoveOffset={collection.moveItemOffset}
+      />
+
+      {/* PDF Page Layout Live Preview Modal (New Feature) */}
+      <PdfLayoutPreviewModal
+        isOpen={isLayoutPreviewOpen}
+        images={collection.images}
+        settings={settings}
+        onUpdateSettings={setSettings}
+        onClose={() => setIsLayoutPreviewOpen(false)}
+        onGeneratePdf={handleStartPdfGeneration}
       />
 
       {/* Progress / Result / Error Modal */}

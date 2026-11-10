@@ -9,7 +9,8 @@ import {
   FileText,
   Check,
   CheckSquare,
-  Square
+  Square,
+  Eye
 } from 'lucide-react';
 import {
   PAPER_SIZES,
@@ -23,6 +24,8 @@ export function SettingsPanel({
   onUpdateSettings,
   isOpen,
   onToggleOpen,
+  onOpenLayoutPreview,
+  hasImages = false,
 }) {
   const [defaultPaths, setDefaultPaths] = useState({
     desktop: '',
@@ -120,6 +123,17 @@ export function SettingsPanel({
 
       {/* Settings Form Container */}
       <div className="flex-1 overflow-y-auto p-5 space-y-6 text-xs">
+        {/* Preview PDF Layout Button */}
+        <button
+          type="button"
+          onClick={onOpenLayoutPreview}
+          disabled={!hasImages}
+          className="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-gradient-to-r from-[#0cb1d6]/10 via-[#6266f0]/10 to-[#a356f6]/10 hover:from-[#0cb1d6]/20 hover:to-[#a356f6]/20 active:scale-98 text-zinc-100 font-semibold rounded-xl border border-[#6266f0]/40 transition disabled:opacity-40 disabled:pointer-events-none group shadow-sm"
+        >
+          <Eye className="w-4 h-4 text-[#0cb1d6] group-hover:scale-110 transition-transform" />
+          <span>Preview PDF Page Layout</span>
+        </button>
+
         {/* ========================================================
             0. Output Folder & Checkbox Mark Selection (Updated UI)
             ======================================================== */}

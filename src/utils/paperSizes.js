@@ -49,3 +49,43 @@ export function convertToPoints(value, unit) {
     default: return num;
   }
 }
+
+export function getPageDimensions({ paperSize, customDimensions, orientation, imgWidth = 800, imgHeight = 600 }) {
+  let pageW = 595.28; // Default A4 width in pt
+  let pageH = 841.89; // Default A4 height in pt
+
+  if (paperSize === 'original') {
+    pageW = imgWidth * (72 / 96);
+    pageH = imgHeight * (72 / 96);
+  } else if (paperSize === 'custom' && customDimensions) {
+    pageW = customDimensions.widthPt || 595.28;
+    pageH = customDimensions.heightPt || 841.89;
+  } else {
+    const found = PAPER_SIZES.find((p) => p.id === paperSize);
+    if (found && found.widthPt && found.heightPt) {
+      pageW = found.widthPt;
+      pageH = found.heightPt;
+    }
+  }
+
+  let effectiveOrientation = orientation;
+  if (orientation === 'auto') {
+    effectiveOrientation = imgWidth >= imgHeight ? 'landscape' : 'portrait';
+  }
+
+  if (effectiveOrientation === 'landscape') {
+    if (pageW < pageH) {
+      const temp = pageW;
+      pageW = pageH;
+      pageH = temp;
+    }
+  } else if (effectiveOrientation === 'portrait') {
+    if (pageW > pageH) {
+      const temp = pageW;
+      pageW = pageH;
+      pageH = temp;
+    }
+  }
+
+  return { widthPt: pageW, heightPt: pageH, effectiveOrientation };
+}

@@ -8,7 +8,8 @@ import {
   FileCheck,
   Image as ImageIcon,
   Layers,
-  Merge
+  Merge,
+  Eye
 } from 'lucide-react';
 
 export function Header({
@@ -27,6 +28,7 @@ export function Header({
   onClearSelection,
   onRemoveSelected,
   onOpenSortMenu,
+  onOpenLayoutPreview,
   onGeneratePdf,
   isGenerating,
   // Merge mode props
@@ -179,6 +181,17 @@ export function Header({
                 </button>
               </div>
             )}
+
+            {/* Preview PDF Layout Button */}
+            <button
+              onClick={onOpenLayoutPreview}
+              disabled={imageCount === 0 || isGenerating}
+              title="Preview how pages will render with current size & margins before generating"
+              className="flex items-center gap-1.5 px-3.5 py-2.5 bg-zinc-900 hover:bg-zinc-800 active:scale-95 disabled:opacity-30 disabled:pointer-events-none text-zinc-200 hover:text-white font-medium text-xs rounded-xl border border-zinc-700/80 hover:border-[#6266f0]/60 transition shadow-sm"
+            >
+              <Eye className="w-4 h-4 text-[#0cb1d6]" />
+              <span>Preview Pages</span>
+            </button>
 
             {/* Generate PDF Button */}
             <button
