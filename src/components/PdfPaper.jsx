@@ -1,11 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getPageDimensions } from '../utils/paperSizes';
+import {
+  getImageEditStyles,
+  getEffectiveImageDimensions,
+  hasActiveEdits
+} from '../utils/imageEdits';
 
 /**
  * PdfPaper Component
  * Renders an accurate, scale-preserved virtual paper sheet representing
  * the exact PDF page output with active margins, page size, orientation,
- * background color, and image placement.
+ * background color, image placement, and live non-destructive edits.
  */
 export function PdfPaper({
   image,
@@ -20,13 +25,16 @@ export function PdfPaper({
   const [dimensions, setDimensions] = useState({ width: 420, height: 594 });
   const [imageError, setImageError] = useState(false);
 
+  // Compute effective image dimensions considering rotation & crop
+  const effectiveDims = getEffectiveImageDimensions(image);
+
   // Compute paper points and aspect ratio from settings
   const { widthPt, heightPt, effectiveOrientation } = getPageDimensions({
     paperSize: settings.paperSize,
     customDimensions: settings.customDimensions,
     orientation: settings.orientation,
-    imgWidth: image?.width || 800,
-    imgHeight: image?.height || 600,
+    imgWidth: effectiveDims.width,
+    imgHeight: effectiveDims.height,
   });
 
   const aspectRatio = widthPt / heightPt;
@@ -92,6 +100,12 @@ export function PdfPaper({
 
   const fallbackSrc = image?.thumbnailUrl || image?.previewUrl;
 
+  const edits = image?.edits || {};
+  const editStyles = getImageEditStyles(edits);
+  const isRotated90or270 = edits.rotation === 90 || edits.rotation === 270;
+  const hasCrop = edits.crop && edits.crop.width > 0 && edits.crop.height > 0;
+  const isEdited = hasActiveEdits(edits);
+
   return (
     <div
       ref={containerRef}
@@ -123,19 +137,65 @@ export function PdfPaper({
           }}
         >
           {imgSrc && !imageError ? (
-            <img
-              src={imgSrc}
-              alt={image?.name || `Page ${pageIndex + 1}`}
-              onError={(e) => {
-                if (fallbackSrc && e.target.src !== fallbackSrc) {
-                  e.target.src = fallbackSrc;
-                } else {
-                  setImageError(true);
-                }
-              }}
-              className={`w-full h-full ${objectFitClass} select-none pointer-events-none transition-all duration-150`}
-              draggable={false}
-            />
+            hasCrop ? (
+              // Cropped visual rendering
+              <div
+                className="w-full h-full relative overflow-hidden flex items-center justify-center"
+                style={{ filter: editStyles.filter }}
+              >
+                <div
+                  className="relative w-full h-full flex items-center justify-center transition-transform duration-200"
+                  style={{ transform: editStyles.transform }}
+                >
+                  <div
+                    className="absolute overflow-hidden"
+                    style={{
+                      width: `${(100 / edits.crop.width) * 100}%`,
+                      height: `${(100 / edits.crop.height) * 100}%`,
+                      left: `-${(edits.crop.x / edits.crop.width) * 100}%`,
+                      top: `-${(edits.crop.y / edits.crop.height) * 100}%`,
+                    }}
+                  >
+                    <img
+                      src={imgSrc}
+                      alt={image?.name || `Page ${pageIndex + 1}`}
+                      onError={(e) => {
+                        if (fallbackSrc && e.target.src !== fallbackSrc) {
+                          e.target.src = fallbackSrc;
+                        } else {
+                          setImageError(true);
+                        }
+                      }}
+                      className={`w-full h-full ${objectFitClass} select-none pointer-events-none`}
+                      draggable={false}
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              // Standard rendering with rotation, flip and filter
+              <div
+                className="w-full h-full relative flex items-center justify-center overflow-hidden"
+                style={{ filter: editStyles.filter }}
+              >
+                <img
+                  src={imgSrc}
+                  alt={image?.name || `Page ${pageIndex + 1}`}
+                  onError={(e) => {
+                    if (fallbackSrc && e.target.src !== fallbackSrc) {
+                      e.target.src = fallbackSrc;
+                    } else {
+                      setImageError(true);
+                    }
+                  }}
+                  style={{
+                    transform: editStyles.transform,
+                  }}
+                  className={`w-full h-full ${objectFitClass} select-none pointer-events-none transition-all duration-200`}
+                  draggable={false}
+                />
+              </div>
+            )
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center text-zinc-400 p-4 text-center">
               <span className="text-xs font-medium">Image preview not available</span>
@@ -143,9 +203,16 @@ export function PdfPaper({
           )}
         </div>
 
-        {/* Small Page Number Watermark on Sheet */}
-        <div className="absolute bottom-2 right-2 text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-black/40 text-white/90 backdrop-blur pointer-events-none">
-          {pageIndex + 1}
+        {/* Small Page Number and Edit Watermark on Sheet */}
+        <div className="absolute bottom-2 right-2 flex items-center gap-1.5 pointer-events-none">
+          {isEdited && (
+            <div className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-[#0cb1d6]/80 text-black shadow">
+              EDITED
+            </div>
+          )}
+          <div className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-black/50 text-white/90 backdrop-blur">
+            {pageIndex + 1}
+          </div>
         </div>
       </div>
     </div>

@@ -6,10 +6,17 @@ import {
   Eye,
   Sliders,
   LayoutGrid,
+  RotateCw,
+  RotateCcw,
+  Wand2,
+  RotateCcw as ResetIcon,
+  Sparkles,
+  Crop,
   FileCheck
 } from 'lucide-react';
 import { PdfPaper } from './PdfPaper';
 import { PAPER_SIZES, getPageDimensions } from '../utils/paperSizes';
+import { getEffectiveImageDimensions, hasActiveEdits } from '../utils/imageEdits';
 
 export function PdfWorkspacePreview({
   images = [],
@@ -18,6 +25,10 @@ export function PdfWorkspacePreview({
   onChangeActiveIndex,
   onSwitchToGrid,
   onOpenFullscreenPreview,
+  onOpenEditor,
+  onRotateImage,
+  onResetEdits,
+  onToggleDocumentFilter,
   onGeneratePdf,
   isGenerating = false,
 }) {
@@ -54,12 +65,14 @@ export function PdfWorkspacePreview({
 
   if (total === 0 || !currentImage) return null;
 
+  const effectiveDims = getEffectiveImageDimensions(currentImage);
+
   const { widthPt, heightPt, effectiveOrientation } = getPageDimensions({
     paperSize: settings.paperSize,
     customDimensions: settings.customDimensions,
     orientation: settings.orientation,
-    imgWidth: currentImage.width || 800,
-    imgHeight: currentImage.height || 600,
+    imgWidth: effectiveDims.width,
+    imgHeight: effectiveDims.height,
   });
 
   const paperSizeName =
@@ -69,11 +82,15 @@ export function PdfWorkspacePreview({
       ? 'Original Dimensions'
       : settings.paperSize;
 
+  const edits = currentImage.edits || {};
+  const isEdited = hasActiveEdits(edits);
+  const isDocumentMode = edits.filter === 'document';
+
   return (
     <div className="flex-1 flex flex-col h-full bg-zinc-950 overflow-hidden select-none">
       {/* Top Workspace Toolbar */}
       <div className="h-14 px-5 bg-zinc-900/90 border-b border-zinc-800 flex items-center justify-between shrink-0 z-10 backdrop-blur">
-        {/* Left: View Switcher & Page Info */}
+        {/* Left: View Switcher, Page Selector & Filename */}
         <div className="flex items-center gap-3">
           <button
             onClick={onSwitchToGrid}
@@ -117,8 +134,68 @@ export function PdfWorkspacePreview({
           </span>
         </div>
 
-        {/* Right: Margins toggle, Fullscreen & Generate */}
-        <div className="flex items-center gap-3">
+        {/* Center/Right: Quick Image Editing Toolbar */}
+        <div className="flex items-center gap-2">
+          {/* Quick Rotate Buttons */}
+          <div className="flex items-center bg-zinc-950 border border-zinc-800 rounded-lg p-0.5">
+            <button
+              onClick={() => onRotateImage && onRotateImage(currentImage.id, -90)}
+              title="Rotate Page 90° Left"
+              className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-[#0cb1d6] transition"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => onRotateImage && onRotateImage(currentImage.id, 90)}
+              title="Rotate Page 90° Right"
+              className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-[#0cb1d6] transition"
+            >
+              <RotateCw className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* Quick Clean Document Filter Toggle */}
+          {onToggleDocumentFilter && (
+            <button
+              onClick={() => onToggleDocumentFilter(currentImage.id)}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition ${
+                isDocumentMode
+                  ? 'bg-gradient-to-r from-[#0cb1d6]/20 to-[#6266f0]/20 border-[#6266f0] text-white shadow-sm'
+                  : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+              }`}
+              title="Toggle Clean High-Contrast Document Scan Mode"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-[#0cb1d6]" />
+              <span>Clean Doc</span>
+            </button>
+          )}
+
+          {/* Full Edit Modal Button */}
+          {onOpenEditor && (
+            <button
+              onClick={() => onOpenEditor(currentImage, currentIndex)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-zinc-950 border border-zinc-800 text-zinc-300 hover:text-[#a356f6] hover:border-zinc-700 transition"
+              title="Open Image Editor (Crop, Adjust Brightness & Filters)"
+            >
+              <Wand2 className="w-3.5 h-3.5 text-[#a356f6]" />
+              <span>Edit Page</span>
+            </button>
+          )}
+
+          {/* Reset Edits if applied */}
+          {isEdited && onResetEdits && (
+            <button
+              onClick={() => onResetEdits(currentImage.id)}
+              className="p-1.5 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-400 hover:text-rose-400 transition"
+              title="Reset edits for this image"
+            >
+              <ResetIcon className="w-3.5 h-3.5" />
+            </button>
+          )}
+
+          <div className="w-[1px] h-4 bg-zinc-800 mx-1"></div>
+
+          {/* Guidelines checkbox */}
           <label className="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer bg-zinc-950/70 border border-zinc-800 px-3 py-1.5 rounded-lg hover:border-zinc-700 transition">
             <input
               type="checkbox"
@@ -129,6 +206,7 @@ export function PdfWorkspacePreview({
             <span>Show Margins</span>
           </label>
 
+          {/* Fullscreen Modal Toggle */}
           <button
             onClick={onOpenFullscreenPreview}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-zinc-950/70 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white transition"
@@ -195,6 +273,8 @@ export function PdfWorkspacePreview({
               img.thumbnailUrl ||
               img.previewUrl ||
               (img.path ? `picnito-media://media/?path=${encodeURIComponent(img.path)}` : null);
+            const thumbEdits = img.edits || {};
+            const thumbEdited = hasActiveEdits(thumbEdits);
 
             return (
               <button
@@ -221,6 +301,10 @@ export function PdfWorkspacePreview({
                 >
                   #{idx + 1}
                 </div>
+
+                {thumbEdited && (
+                  <div className="absolute bottom-0.5 right-0.5 w-2 h-2 rounded-full bg-[#0cb1d6] ring-1 ring-black"></div>
+                )}
               </button>
             );
           })}

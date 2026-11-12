@@ -157,6 +157,117 @@ export function useImageCollection() {
     });
   }, [originalOrder, pushHistory]);
 
+  // =========================================================================
+  // Image Editing Handlers (Rotation, Filters, Crop, Adjustments)
+  // =========================================================================
+
+  // Update edits for a specific image
+  const updateImageEdits = useCallback((id, newEdits) => {
+    setImages((prev) => {
+      const next = prev.map((img) => {
+        if (img.id !== id) return img;
+        return {
+          ...img,
+          edits: {
+            ...(img.edits || {}),
+            ...newEdits,
+          },
+        };
+      });
+      pushHistory(next);
+      return next;
+    });
+  }, [pushHistory]);
+
+  // Rotate a single image by +90° or -90°
+  const rotateImage = useCallback((id, delta = 90) => {
+    setImages((prev) => {
+      const next = prev.map((img) => {
+        if (img.id !== id) return img;
+        const currentRot = img.edits?.rotation || 0;
+        const nextRot = ((currentRot + delta) % 360 + 360) % 360;
+        return {
+          ...img,
+          edits: {
+            ...(img.edits || {}),
+            rotation: nextRot,
+          },
+        };
+      });
+      pushHistory(next);
+      return next;
+    });
+  }, [pushHistory]);
+
+  // Rotate all selected images (or active one)
+  const rotateSelected = useCallback((delta = 90) => {
+    setImages((prev) => {
+      const targetIds = selectedIds.size > 0 ? selectedIds : new Set(prev.map((i) => i.id));
+      const next = prev.map((img) => {
+        if (!targetIds.has(img.id)) return img;
+        const currentRot = img.edits?.rotation || 0;
+        const nextRot = ((currentRot + delta) % 360 + 360) % 360;
+        return {
+          ...img,
+          edits: {
+            ...(img.edits || {}),
+            rotation: nextRot,
+          },
+        };
+      });
+      pushHistory(next);
+      return next;
+    });
+  }, [selectedIds, pushHistory]);
+
+  // Apply a filter (document, grayscale, invert, none) to selected images
+  const applyFilterToSelected = useCallback((filterName) => {
+    setImages((prev) => {
+      const targetIds = selectedIds.size > 0 ? selectedIds : new Set(prev.map((i) => i.id));
+      const next = prev.map((img) => {
+        if (!targetIds.has(img.id)) return img;
+        return {
+          ...img,
+          edits: {
+            ...(img.edits || {}),
+            filter: filterName,
+          },
+        };
+      });
+      pushHistory(next);
+      return next;
+    });
+  }, [selectedIds, pushHistory]);
+
+  // Reset all edits for a single image
+  const resetImageEdits = useCallback((id) => {
+    setImages((prev) => {
+      const next = prev.map((img) => {
+        if (img.id !== id) return img;
+        const copy = { ...img };
+        delete copy.edits;
+        return copy;
+      });
+      pushHistory(next);
+      return next;
+    });
+  }, [pushHistory]);
+
+  // Reset edits for all selected images
+  const resetSelectedEdits = useCallback(() => {
+    setImages((prev) => {
+      const targetIds = selectedIds.size > 0 ? selectedIds : new Set(prev.map((i) => i.id));
+      const next = prev.map((img) => {
+        if (!targetIds.has(img.id)) return img;
+        const copy = { ...img };
+        delete copy.edits;
+        return copy;
+      });
+      pushHistory(next);
+      return next;
+    });
+  }, [selectedIds, pushHistory]);
+
   // Selection handlers
   const toggleSelect = useCallback((id, index, event = {}) => {
     const { ctrlKey, metaKey, shiftKey } = event;
@@ -242,6 +353,12 @@ export function useImageCollection() {
     redo,
     canUndo,
     canRedo,
+    updateImageEdits,
+    rotateImage,
+    rotateSelected,
+    applyFilterToSelected,
+    resetImageEdits,
+    resetSelectedEdits,
     totalCount,
     totalBytes,
     formattedTotalSize,

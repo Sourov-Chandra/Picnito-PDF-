@@ -11,6 +11,7 @@ import { SortModal } from './components/SortModal';
 import { ConfirmModal } from './components/ConfirmModal';
 import { ImagePreviewModal } from './components/ImagePreviewModal';
 import { PdfLayoutPreviewModal } from './components/PdfLayoutPreviewModal';
+import { ImageEditorModal } from './components/ImageEditorModal';
 import { useImageCollection } from './hooks/useImageCollection';
 import { usePdfGenerator } from './hooks/usePdfGenerator';
 import { usePdfMerger } from './hooks/usePdfMerger';
@@ -60,6 +61,11 @@ export default function App() {
     isOpen: false,
     index: 0,
   });
+  const [editorModal, setEditorModal] = useState({
+    isOpen: false,
+    image: null,
+    index: 0,
+  });
 
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
@@ -90,7 +96,7 @@ export default function App() {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
-      if (previewState.isOpen || isLayoutPreviewOpen) return;
+      if (previewState.isOpen || isLayoutPreviewOpen || editorModal.isOpen) return;
 
       if (activeMode === 'images') {
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
@@ -127,7 +133,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [collection, previewState.isOpen, isLayoutPreviewOpen, activeMode]);
+  }, [collection, previewState.isOpen, isLayoutPreviewOpen, editorModal.isOpen, activeMode]);
 
   // Page preview triggers
   const handleOpenPagePreview = (index) => {
@@ -138,7 +144,6 @@ export default function App() {
   const handleToggleLayoutPreview = () => {
     if (collection.totalCount === 0) return;
 
-    // If an image is selected, start preview on that image
     if (collection.selectedIds.size > 0) {
       const firstSelectedId = Array.from(collection.selectedIds)[0];
       const foundIdx = collection.images.findIndex((img) => img.id === firstSelectedId);
@@ -152,6 +157,51 @@ export default function App() {
     } else {
       setIsLayoutPreviewOpen(true);
     }
+  };
+
+  // Image Editor Handlers
+  const handleOpenEditor = (image, index) => {
+    setEditorModal({
+      isOpen: true,
+      image,
+      index,
+    });
+  };
+
+  const handleCloseEditor = () => {
+    setEditorModal({
+      isOpen: false,
+      image: null,
+      index: 0,
+    });
+  };
+
+  const handleSaveEdits = (imageId, newEdits, applyToAllSelected) => {
+    if (applyToAllSelected && collection.selectedIds.size > 0) {
+      collection.images.forEach((img) => {
+        if (collection.selectedIds.has(img.id)) {
+          collection.updateImageEdits(img.id, newEdits);
+        }
+      });
+    } else {
+      collection.updateImageEdits(imageId, newEdits);
+    }
+  };
+
+  const handleRotateImage = (id, delta = 90) => {
+    collection.rotateImage(id, delta);
+  };
+
+  const handleToggleDocumentFilter = (id) => {
+    const img = collection.images.find((i) => i.id === id);
+    if (!img) return;
+    const currentFilter = img.edits?.filter;
+    const nextFilter = currentFilter === 'document' ? 'none' : 'document';
+    collection.updateImageEdits(id, { filter: nextFilter });
+  };
+
+  const handleResetEdits = (id) => {
+    collection.resetImageEdits(id);
   };
 
   // Lightbox Zoom Handlers
@@ -299,6 +349,8 @@ export default function App() {
         onSelectAll={collection.selectAll}
         onClearSelection={collection.clearSelection}
         onRemoveSelected={collection.removeSelected}
+        onRotateSelected={collection.rotateSelected}
+        onApplyFilterSelected={collection.applyFilterToSelected}
         onOpenSortMenu={() => setIsSortOpen(true)}
         onOpenLayoutPreview={handleToggleLayoutPreview}
         onGeneratePdf={handleStartPdfGeneration}
@@ -333,6 +385,10 @@ export default function App() {
                   onChangeActiveIndex={setActiveImageIndex}
                   onSwitchToGrid={() => setWorkspaceView('grid')}
                   onOpenFullscreenPreview={() => setIsLayoutPreviewOpen(true)}
+                  onOpenEditor={handleOpenEditor}
+                  onRotateImage={handleRotateImage}
+                  onResetEdits={handleResetEdits}
+                  onToggleDocumentFilter={handleToggleDocumentFilter}
                   onGeneratePdf={handleStartPdfGeneration}
                   isGenerating={generator.isGenerating}
                 />
@@ -359,6 +415,8 @@ export default function App() {
                     onMoveToLast={collection.moveToLast}
                     onOpenPreview={handleOpenLightbox}
                     onOpenPagePreview={handleOpenPagePreview}
+                    onOpenEditor={handleOpenEditor}
+                    onRotate={handleRotateImage}
                   />
                 </>
               )}
@@ -399,6 +457,17 @@ export default function App() {
           </>
         )}
       </div>
+
+      {/* Image Editor Modal (Crop, Rotate, Filters, Brightness/Contrast) */}
+      <ImageEditorModal
+        isOpen={editorModal.isOpen}
+        image={editorModal.image}
+        index={editorModal.index}
+        total={collection.totalCount}
+        selectedCount={collection.selectedIds.size}
+        onClose={handleCloseEditor}
+        onSaveEdits={handleSaveEdits}
+      />
 
       {/* Big Image Preview Lightbox Modal */}
       <ImagePreviewModal

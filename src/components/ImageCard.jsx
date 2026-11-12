@@ -8,9 +8,12 @@ import {
   Check,
   Maximize2,
   Eye,
+  RotateCw,
+  Wand2,
   Image as ImageIcon
 } from 'lucide-react';
 import { formatFileSize, formatDimensions } from '../utils/formatters';
+import { getImageEditStyles, hasActiveEdits } from '../utils/imageEdits';
 
 export function ImageCard({
   image,
@@ -29,13 +32,11 @@ export function ImageCard({
   isDragging,
   onOpenPreview,
   onOpenPagePreview,
+  onOpenEditor,
+  onRotate,
 }) {
   const [imageError, setImageError] = useState(false);
 
-  // Determine image source:
-  // 1. Sharp generated base64 thumbnail (instant, auto-rotated, low-memory)
-  // 2. Browser ObjectURL (if imported via HTML5 file drop)
-  // 3. Custom Electron picnito-media protocol
   const imgSrc =
     image.thumbnailUrl ||
     image.previewUrl ||
@@ -53,6 +54,10 @@ export function ImageCard({
     }
   };
 
+  const edits = image.edits || {};
+  const editStyles = getImageEditStyles(edits);
+  const isEdited = hasActiveEdits(edits);
+
   return (
     <div
       draggable
@@ -68,7 +73,7 @@ export function ImageCard({
           : 'border-zinc-800 hover:border-zinc-700 hover:shadow-md'
       } ${isDragging ? 'opacity-30 scale-95' : 'opacity-100'}`}
     >
-      {/* Sequence Badge (Top Left) */}
+      {/* Sequence & Edited Badges (Top Left) */}
       <div className="absolute top-2.5 left-2.5 z-10 flex items-center gap-1.5">
         <div
           title={`Page ${index + 1} in generated PDF`}
@@ -80,10 +85,48 @@ export function ImageCard({
         >
           #{index + 1}
         </div>
+
+        {isEdited && (
+          <div
+            title="Image adjustments applied"
+            className="flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-gradient-to-r from-[#0cb1d6] to-[#6266f0] text-white shadow-sm"
+          >
+            <Wand2 className="w-2.5 h-2.5" />
+            <span>EDITED</span>
+          </div>
+        )}
       </div>
 
-      {/* Action Buttons (Top Right): Page Preview, Inspect, Select, Remove */}
+      {/* Action Buttons (Top Right): Quick Rotate, Edit, Preview, Zoom, Select, Remove */}
       <div className="absolute top-2.5 right-2.5 z-10 flex items-center gap-1">
+        {/* Quick Rotate Button */}
+        {onRotate && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onRotate(image.id, 90);
+            }}
+            title="Rotate 90° Clockwise"
+            className="w-6 h-6 rounded-md bg-zinc-950/80 border border-zinc-700/80 text-zinc-300 hover:text-[#0cb1d6] hover:bg-zinc-900 opacity-0 group-hover:opacity-100 transition flex items-center justify-center backdrop-blur shadow-sm"
+          >
+            <RotateCw className="w-3.5 h-3.5" />
+          </button>
+        )}
+
+        {/* Full Editor Modal Button */}
+        {onOpenEditor && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenEditor(image, index);
+            }}
+            title="Edit & Enhance image (Crop, Rotate, B&W Filter)"
+            className="w-6 h-6 rounded-md bg-zinc-950/80 border border-zinc-700/80 text-zinc-300 hover:text-[#a356f6] hover:bg-zinc-900 opacity-0 group-hover:opacity-100 transition flex items-center justify-center backdrop-blur shadow-sm"
+          >
+            <Wand2 className="w-3.5 h-3.5" />
+          </button>
+        )}
+
         {/* PDF Page Layout Preview Button */}
         <button
           onClick={handleOpenPage}
@@ -134,7 +177,7 @@ export function ImageCard({
         </button>
       </div>
 
-      {/* Thumbnail Container — Clicking this opens PDF page preview directly! */}
+      {/* Thumbnail Container — Reflects Live Edits */}
       <div
         onClick={(e) => {
           if (e.ctrlKey || e.metaKey || e.shiftKey) {
@@ -147,19 +190,27 @@ export function ImageCard({
         title="Click to preview on PDF page"
       >
         {imgSrc && !imageError ? (
-          <img
-            src={imgSrc}
-            alt={image.name}
-            onError={(e) => {
-              if (fallbackSrc && e.target.src !== fallbackSrc) {
-                e.target.src = fallbackSrc;
-              } else {
-                setImageError(true);
-              }
-            }}
-            className="w-full h-full object-contain pointer-events-none transition-transform duration-200 group-hover/thumb:scale-105"
-            loading="lazy"
-          />
+          <div
+            className="w-full h-full flex items-center justify-center overflow-hidden"
+            style={{ filter: editStyles.filter }}
+          >
+            <img
+              src={imgSrc}
+              alt={image.name}
+              onError={(e) => {
+                if (fallbackSrc && e.target.src !== fallbackSrc) {
+                  e.target.src = fallbackSrc;
+                } else {
+                  setImageError(true);
+                }
+              }}
+              style={{
+                transform: editStyles.transform,
+              }}
+              className="w-full h-full object-contain pointer-events-none transition-all duration-200 group-hover/thumb:scale-105"
+              loading="lazy"
+            />
+          </div>
         ) : (
           <div className="flex flex-col items-center justify-center text-zinc-500 p-3 text-center">
             <ImageIcon className="w-6 h-6 mb-1 stroke-1" />
@@ -167,7 +218,7 @@ export function ImageCard({
           </div>
         )}
 
-        {/* Hover Hint Overlay to tell user clicking opens big preview */}
+        {/* Hover Hint Overlay to tell user clicking opens page preview */}
         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
           <div className="px-3 py-1 rounded-full bg-zinc-900/95 border border-zinc-700/80 text-white text-[11px] font-medium flex items-center gap-1.5 shadow-xl backdrop-blur transform group-hover/thumb:scale-105 transition-transform">
             <Eye className="w-3 h-3 text-[#0cb1d6]" />

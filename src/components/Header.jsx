@@ -30,6 +30,8 @@ export function Header({
   onSelectAll,
   onClearSelection,
   onRemoveSelected,
+  onRotateSelected,
+  onApplyFilterSelected,
   onOpenSortMenu,
   onOpenLayoutPreview,
   onGeneratePdf,
@@ -176,6 +178,28 @@ export function Header({
             {/* Selected Items Batch Actions */}
             {selectedCount > 0 && (
               <div className="flex items-center gap-1.5 bg-zinc-900/80 border border-zinc-800 rounded-lg p-1">
+                {onRotateSelected && (
+                  <button
+                    onClick={() => onRotateSelected(90)}
+                    title="Rotate all selected images 90° clockwise"
+                    className="flex items-center gap-1 px-2 py-1 text-xs text-[#0cb1d6] hover:bg-[#0cb1d6]/10 rounded transition font-medium"
+                  >
+                    <RotateCw className="w-3.5 h-3.5" />
+                    <span>Rotate ({selectedCount})</span>
+                  </button>
+                )}
+
+                {onApplyFilterSelected && (
+                  <button
+                    onClick={() => onApplyFilterSelected('document')}
+                    title="Apply clean document text filter to selected images"
+                    className="flex items-center gap-1 px-2 py-1 text-xs text-[#a356f6] hover:bg-[#a356f6]/10 rounded transition font-medium"
+                  >
+                    <Eye className="w-3.5 h-3.5 text-[#0cb1d6]" />
+                    <span>Clean Doc</span>
+                  </button>
+                )}
+
                 <button
                   onClick={onClearSelection}
                   title="Clear selection (Esc)"
@@ -183,10 +207,11 @@ export function Header({
                 >
                   Deselect
                 </button>
+
                 <button
                   onClick={onRemoveSelected}
                   title="Remove selected images (Del)"
-                  className="flex items-center gap-1 px-2.5 py-1 text-xs text-rose-400 hover:bg-rose-500/10 rounded transition font-medium"
+                  className="flex items-center gap-1 px-2 py-1 text-xs text-rose-400 hover:bg-rose-500/10 rounded transition font-medium"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   Remove ({selectedCount})

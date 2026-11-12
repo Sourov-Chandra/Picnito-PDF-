@@ -193,6 +193,75 @@ class PdfService {
     let imgWidth = meta.width || 800;
     let imgHeight = meta.height || 600;
 
+    let needsTransform = false;
+    const edits = imgItem.edits || {};
+
+    // 1. Visual Crop
+    if (edits.crop && edits.crop.width > 0 && edits.crop.height > 0) {
+      const extractLeft = Math.max(0, Math.round((edits.crop.x / 100) * imgWidth));
+      const extractTop = Math.max(0, Math.round((edits.crop.y / 100) * imgHeight));
+      const extractWidth = Math.min(imgWidth - extractLeft, Math.round((edits.crop.width / 100) * imgWidth));
+      const extractHeight = Math.min(imgHeight - extractTop, Math.round((edits.crop.height / 100) * imgHeight));
+
+      if (extractWidth > 10 && extractHeight > 10) {
+        sharpInstance = sharpInstance.extract({
+          left: extractLeft,
+          top: extractTop,
+          width: extractWidth,
+          height: extractHeight,
+        });
+        imgWidth = extractWidth;
+        imgHeight = extractHeight;
+        needsTransform = true;
+      }
+    }
+
+    // 2. User Rotation (0, 90, 180, 270)
+    if (edits.rotation && edits.rotation % 360 !== 0) {
+      const rot = ((edits.rotation % 360) + 360) % 360;
+      sharpInstance = sharpInstance.rotate(rot);
+      if (rot === 90 || rot === 270) {
+        const temp = imgWidth;
+        imgWidth = imgHeight;
+        imgHeight = temp;
+      }
+      needsTransform = true;
+    }
+
+    // 3. User Flips (Flop for horizontal, Flip for vertical)
+    if (edits.flipH) {
+      sharpInstance = sharpInstance.flop();
+      needsTransform = true;
+    }
+    if (edits.flipV) {
+      sharpInstance = sharpInstance.flip();
+      needsTransform = true;
+    }
+
+    // 4. Color / Document Filters
+    if (edits.filter === 'grayscale') {
+      sharpInstance = sharpInstance.grayscale();
+      needsTransform = true;
+    } else if (edits.filter === 'document') {
+      // High-contrast clean text document filter
+      sharpInstance = sharpInstance.grayscale().normalise().linear(1.3, -25);
+      needsTransform = true;
+    } else if (edits.filter === 'invert') {
+      sharpInstance = sharpInstance.negate({ alpha: false });
+      needsTransform = true;
+    }
+
+    // 5. Brightness & Contrast
+    if (edits.brightness !== undefined && edits.brightness !== 100) {
+      sharpInstance = sharpInstance.modulate({ brightness: edits.brightness / 100 });
+      needsTransform = true;
+    }
+    if (edits.contrast !== undefined && edits.contrast !== 100) {
+      const c = edits.contrast / 100;
+      sharpInstance = sharpInstance.linear(c, -(128 * c) + 128);
+      needsTransform = true;
+    }
+
     // Calculate Page Size (points)
     let pageW = 595.28; // default A4
     let pageH = 841.89;

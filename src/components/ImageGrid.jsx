@@ -12,6 +12,8 @@ export function ImageGrid({
   onMoveToLast,
   onOpenPreview,
   onOpenPagePreview,
+  onOpenEditor,
+  onRotate,
 }) {
   const [dragIndex, setDragIndex] = useState(null);
 
@@ -60,6 +62,8 @@ export function ImageGrid({
             onDragEnd={handleDragEnd}
             onOpenPreview={onOpenPreview}
             onOpenPagePreview={onOpenPagePreview}
+            onOpenEditor={onOpenEditor}
+            onRotate={onRotate}
           />
         ))}
       </div>
