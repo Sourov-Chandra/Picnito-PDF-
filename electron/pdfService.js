@@ -352,7 +352,6 @@ class PdfService {
       maxDim = 1800;
     }
 
-    let needsTransform = false;
     const ext = path.extname(rawPath).toLowerCase();
 
     // Check if resize needed
