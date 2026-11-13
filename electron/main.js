@@ -131,7 +131,10 @@ function createWindow() {
         if (retries > 0) {
           setTimeout(() => tryLoad(retries - 1), 400);
         } else {
-          console.error('Failed to load dev server:', err);
+          console.warn('Dev server not reachable, loading built files from dist/index.html');
+          mainWindow.loadFile(path.join(__dirname, '../dist/index.html')).catch((fileErr) => {
+            console.error('Failed to load both dev server and dist files:', fileErr);
+          });
         }
       });
     };
